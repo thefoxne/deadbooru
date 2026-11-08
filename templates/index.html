@@ -1846,6 +1846,18 @@
           </table>
         </div>
 
+        <!-- Section 3: Pixiv Authentication (Optional) -->
+        <div class="card" style="margin-top: 16px; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--default-border-color); padding-bottom: 6px;">
+            <strong style="font-size: 13px;">3. Pixiv Session Cookie (PHPSESSID - Optional)</strong>
+            <span style="font-size: 11px; color: var(--muted-text-color);">Unlocks R-18 &amp; restricted works</span>
+          </div>
+          <p class="fineprint" style="margin-bottom: 10px;">
+            Optional: If you need to fetch R-18, R-18G, or member-only Pixiv artworks, paste your Pixiv <code>PHPSESSID</code> cookie value below.
+          </p>
+          <input type="text" id="settings-pixiv-cookie" class="form-input" style="width: 100%; box-sizing: border-box; font-family: var(--monospace-font); font-size: 12px;" placeholder="Paste PHPSESSID cookie here (e.g. 12345678_abcdef...)">
+        </div>
+
       </div>
 
       <div class="modal-footer">
@@ -2681,10 +2693,11 @@
 
           showToast("🎉 Artwork loaded successfully!");
         } else {
-          showToast("Ready for tagging! (You can drag an image file in to preview)", false);
+          showToast(data.error || "Unable to fetch image from URL!", true);
         }
       } catch (err) {
         console.log("Fetch error:", err.message);
+        showToast("Fetch error: " + err.message, true);
       }
     }
 
@@ -3418,6 +3431,11 @@
           wbTbody.appendChild(tr);
         });
       }
+
+      const pixivInput = document.getElementById("settings-pixiv-cookie");
+      if (pixivInput) {
+        pixivInput.value = currentSettings.pixiv_phpsessid || "";
+      }
     }
 
     // Load new tag file
@@ -3518,6 +3536,10 @@
       });
 
       currentSettings.webhooks = whs;
+      const pixivInput = document.getElementById("settings-pixiv-cookie");
+      if (pixivInput) {
+        currentSettings.pixiv_phpsessid = pixivInput.value.trim();
+      }
 
       try {
         const resp = await fetch("/api/settings", {

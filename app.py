@@ -51,6 +51,7 @@ DEFAULT_SETTINGS = {
     "upload_mode": "discord_attachment",
     "auto_rating_tag": True,
     "default_rating": "general",
+    "pixiv_phpsessid": "",
     "port": 5000
 }
 
@@ -738,13 +739,17 @@ def api_proxy_image():
     if not raw_url:
         return "Missing URL", 400
 
-    referer = "https://www.pixiv.net/" if "pximg.net" in raw_url else raw_url
+    settings = SettingsManager.load()
+    phpsessid = settings.get("pixiv_phpsessid", "").strip()
+    cookies = {"PHPSESSID": phpsessid} if phpsessid else {}
+
+    referer = "https://www.pixiv.net/" if ("pximg.net" in raw_url or "pixiv.net" in raw_url) else raw_url
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Referer": referer
     }
     try:
-        r = requests.get(raw_url, headers=headers, timeout=15)
+        r = requests.get(raw_url, headers=headers, cookies=cookies, timeout=25)
         if r.status_code == 200:
             content_type = r.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
             return Response(r.content, mimetype=content_type)
@@ -753,117 +758,241 @@ def api_proxy_image():
         return str(e), 500
 
 
+def extract_pixiv_id(url: str) -> Optional[str]:
+    """Extract Pixiv illustration ID from any Pixiv artwork/pximg URL."""
+    m = re.search(r'pixiv\.net/(?:[a-zA-Z0-9\-_]+/)?artworks/(\d+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'illust_id=(\d+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'pixiv\.net/i/(\d+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'pximg\.net/.*/(\d+)_p\d+', url)
+    if m:
+        return m.group(1)
+    return None
+
+
 def resolve_pixiv(url: str) -> Optional[Dict[str, Any]]:
-    """Resolves Pixiv artwork including multi-page posts, metadata, and tags."""
-    m = re.search(r'pixiv\.net/(?:en/)?artworks/(\d+)', url)
-    if not m:
+    """Resolves Pixiv artwork including multi-page posts, metadata, and tags with fallback."""
+    illust_id = extract_pixiv_id(url)
+    if not illust_id:
         return None
-    illust_id = m.group(1)
+
+    settings = SettingsManager.load()
+    phpsessid = settings.get("pixiv_phpsessid", "").strip()
+    cookies = {"PHPSESSID": phpsessid} if phpsessid else {}
+
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://www.pixiv.net/"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Referer": f"https://www.pixiv.net/artworks/{illust_id}",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin"
     }
+
+    # 1. Primary Method: Pixiv AJAX API
     try:
-        r = requests.get(f"https://www.pixiv.net/ajax/illust/{illust_id}", headers=headers, timeout=8)
-        if r.status_code != 200:
-            return None
-        body = r.json().get("body", {})
-        artist = body.get("userName", "")
-        title = body.get("title", "")
-        tags = [t["tag"] for t in body.get("tags", {}).get("tags", [])]
-        published = body.get("uploadDate", "")
+        r = requests.get(
+            f"https://www.pixiv.net/ajax/illust/{illust_id}",
+            headers=headers,
+            cookies=cookies,
+            timeout=18
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if not data.get("error"):
+                body = data.get("body", {})
+                artist = body.get("userName", "")
+                title = body.get("title", "")
+                tags = [t["tag"] for t in body.get("tags", {}).get("tags", [])]
+                published = body.get("uploadDate", "")
 
-        # Check if Pixiv artwork is an Ugoira (illustType == 2)
-        is_ugoira = (body.get("illustType") == 2)
-        ugoira_meta = None
-        if is_ugoira:
-            try:
-                r_ugoira = requests.get(f"https://www.pixiv.net/ajax/illust/{illust_id}/ugoira_meta", headers=headers, timeout=8)
-                if r_ugoira.status_code == 200:
-                    u_data = r_ugoira.json().get("body", {})
-                    frames = u_data.get("frames", [])
-                    total_dur = sum(f.get("delay", 0) for f in frames)
-                    ugoira_meta = {
-                        "src": u_data.get("src"),
-                        "mime_type": u_data.get("mime_type", "image/jpeg"),
-                        "frames": frames,
-                        "frame_count": len(frames),
-                        "duration_ms": total_dur,
-                        "duration_sec": round(total_dur / 1000.0, 2)
-                    }
-                    if "ugoira" not in [t.lower() for t in tags]:
-                        tags.append("ugoira")
-                    if "animated" not in [t.lower() for t in tags]:
-                        tags.append("animated")
-            except Exception as e:
-                print(f"[!] ugoira_meta fetch error: {e}")
+                is_ugoira = (body.get("illustType") == 2)
+                ugoira_meta = None
+                if is_ugoira:
+                    try:
+                        r_ugoira = requests.get(
+                            f"https://www.pixiv.net/ajax/illust/{illust_id}/ugoira_meta",
+                            headers=headers,
+                            cookies=cookies,
+                            timeout=15
+                        )
+                        if r_ugoira.status_code == 200:
+                            u_data = r_ugoira.json().get("body", {})
+                            frames = u_data.get("frames", [])
+                            total_dur = sum(f.get("delay", 0) for f in frames)
+                            ugoira_meta = {
+                                "src": u_data.get("src"),
+                                "mime_type": u_data.get("mime_type", "image/jpeg"),
+                                "frames": frames,
+                                "frame_count": len(frames),
+                                "duration_ms": total_dur,
+                                "duration_sec": round(total_dur / 1000.0, 2)
+                            }
+                            if "ugoira" not in [t.lower() for t in tags]:
+                                tags.append("ugoira")
+                            if "animated" not in [t.lower() for t in tags]:
+                                tags.append("animated")
+                    except Exception as e:
+                        print(f"[!] ugoira_meta fetch error: {e}")
 
-        # Check pages endpoint
-        r_pages = requests.get(f"https://www.pixiv.net/ajax/illust/{illust_id}/pages", headers=headers, timeout=8)
-        pages = []
-        if r_pages.status_code == 200:
-            for i, p in enumerate(r_pages.json().get("body", [])):
-                urls = p.get("urls", {})
-                reg = urls.get("regular") or urls.get("original")
-                thumb = urls.get("thumb_mini") or urls.get("small") or reg
-                pages.append({
-                    "index": i,
-                    "page_num": i + 1,
-                    "width": p.get("width", 0),
-                    "height": p.get("height", 0),
-                    "img_url": reg,
-                    "thumb_url": thumb,
-                    "source_url": f"https://www.pixiv.net/artworks/{illust_id}#{i+1}"
-                })
+                # Check pages endpoint
+                pages = []
+                try:
+                    r_pages = requests.get(
+                        f"https://www.pixiv.net/ajax/illust/{illust_id}/pages",
+                        headers=headers,
+                        cookies=cookies,
+                        timeout=15
+                    )
+                    if r_pages.status_code == 200:
+                        for i, p in enumerate(r_pages.json().get("body", [])):
+                            urls = p.get("urls", {})
+                            reg = urls.get("regular") or urls.get("original")
+                            thumb = urls.get("thumb_mini") or urls.get("small") or reg
+                            pages.append({
+                                "index": i,
+                                "page_num": i + 1,
+                                "width": p.get("width", 0),
+                                "height": p.get("height", 0),
+                                "img_url": reg,
+                                "thumb_url": thumb,
+                                "source_url": f"https://www.pixiv.net/artworks/{illust_id}#{i+1}"
+                            })
+                except Exception as e:
+                    print(f"[!] pages fetch error: {e}")
 
-        if not pages:
-            reg = body.get("urls", {}).get("regular") or body.get("urls", {}).get("original")
-            if reg:
-                pages.append({
-                    "index": 0,
-                    "page_num": 1,
-                    "width": body.get("width", 0),
-                    "height": body.get("height", 0),
-                    "img_url": reg,
-                    "thumb_url": body.get("urls", {}).get("thumb") or reg,
-                    "source_url": f"https://www.pixiv.net/artworks/{illust_id}"
-                })
+                if not pages:
+                    reg = body.get("urls", {}).get("regular") or body.get("urls", {}).get("original")
+                    if reg:
+                        pages.append({
+                            "index": 0,
+                            "page_num": 1,
+                            "width": body.get("width", 0),
+                            "height": body.get("height", 0),
+                            "img_url": reg,
+                            "thumb_url": body.get("urls", {}).get("thumb") or reg,
+                            "source_url": f"https://www.pixiv.net/artworks/{illust_id}"
+                        })
 
-        if not pages:
-            return None
+                if pages:
+                    first_img_url = pages[0]["img_url"]
+                    img_r = requests.get(
+                        first_img_url,
+                        headers={"User-Agent": headers["User-Agent"], "Referer": "https://www.pixiv.net/"},
+                        cookies=cookies,
+                        timeout=20
+                    )
+                    if img_r.status_code == 200 and len(img_r.content) > 1000:
+                        ct = img_r.headers.get("Content-Type", "image/jpeg").split(";")[0].strip().lower()
+                        b64 = base64.b64encode(img_r.content).decode("utf-8")
+                        data_uri = f"data:{ct};base64,{b64}"
 
-        first_img_url = pages[0]["img_url"]
-        img_r = requests.get(first_img_url, headers=headers, timeout=12)
-        if img_r.status_code != 200:
-            return None
-        ct = img_r.headers.get("Content-Type", "image/jpeg").split(";")[0].strip().lower()
-        b64 = base64.b64encode(img_r.content).decode("utf-8")
-        data_uri = f"data:{ct};base64,{b64}"
-
-        return {
-            "success": True,
-            "type": "pixiv",
-            "is_multi": len(pages) > 1,
-            "count": len(pages),
-            "current_index": 0,
-            "artist": artist,
-            "title": title,
-            "tags": tags,
-            "published": published,
-            "pages": pages,
-            "data_uri": data_uri,
-            "size": len(img_r.content),
-            "content_type": ct,
-            "direct_url": pages[0]["img_url"],
-            "source_url": pages[0]["source_url"],
-            "is_ugoira": is_ugoira,
-            "ugoira_meta": ugoira_meta
-        }
+                        return {
+                            "success": True,
+                            "type": "pixiv",
+                            "is_multi": len(pages) > 1,
+                            "count": len(pages),
+                            "current_index": 0,
+                            "artist": artist,
+                            "title": title,
+                            "tags": tags,
+                            "published": published,
+                            "pages": pages,
+                            "data_uri": data_uri,
+                            "size": len(img_r.content),
+                            "content_type": ct,
+                            "direct_url": pages[0]["img_url"],
+                            "source_url": pages[0]["source_url"],
+                            "is_ugoira": is_ugoira,
+                            "ugoira_meta": ugoira_meta
+                        }
     except Exception as e:
-        print(f"[!] resolve_pixiv error: {e}")
-        return None
+        print(f"[!] Primary Pixiv AJAX failed: {e}")
 
+    # 2. Resilient Secondary Fallback: Pixiv HTML Page + Embed Service
+    try:
+        page_headers = {
+            "User-Agent": headers["User-Agent"],
+            "Referer": "https://www.pixiv.net/",
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8"
+        }
+        page_resp = requests.get(
+            f"https://www.pixiv.net/artworks/{illust_id}",
+            headers=page_headers,
+            cookies=cookies,
+            timeout=15
+        )
+        if page_resp.status_code == 200:
+            text = page_resp.text
+            
+            t_m = re.search(r'<meta[^>]+property=["\']twitter:title["\'][^>]+content=["\']([^"\']+)["\']', text)
+            title = html.unescape(t_m.group(1)) if t_m else ""
+            
+            artist = ""
+            tags = []
+            desc_m = re.search(r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)["\']', text)
+            if desc_m:
+                desc_content = html.unescape(desc_m.group(1))
+                brackets = re.findall(r'[\u300c\u300e](.*?)[\u300d\u300f]', desc_content)
+                if len(brackets) >= 2:
+                    if not title and len(brackets) > 0:
+                        title = brackets[0]
+                    artist = brackets[-1]
+                    if len(brackets) > 2:
+                        tags = brackets[1:-1]
+            if not artist:
+                d_m = re.search(r'<meta[^>]+property=["\']twitter:description["\'][^>]+content=["\']([^"\']+)["\']', text)
+                if d_m:
+                    desc_tw = html.unescape(d_m.group(1))
+                    if " by " in desc_tw:
+                        artist = desc_tw.split(" by ")[-1].strip()
 
+            # Artwork image from embed service (works without session/referer)
+            embed_url = f"https://embed.pixiv.net/decorate.php?illust_id={illust_id}"
+            embed_resp = requests.get(embed_url, headers=page_headers, timeout=15)
+            if embed_resp.status_code == 200 and len(embed_resp.content) > 5000:
+                ct = embed_resp.headers.get("Content-Type", "image/png").split(";")[0].strip().lower()
+                b64 = base64.b64encode(embed_resp.content).decode("utf-8")
+                data_uri = f"data:{ct};base64,{b64}"
+                source_url = f"https://www.pixiv.net/artworks/{illust_id}"
+                
+                return {
+                    "success": True,
+                    "type": "pixiv",
+                    "is_multi": False,
+                    "count": 1,
+                    "current_index": 0,
+                    "artist": artist,
+                    "title": title,
+                    "tags": tags,
+                    "published": "",
+                    "pages": [{
+                        "index": 0,
+                        "page_num": 1,
+                        "width": 1200,
+                        "height": 630,
+                        "img_url": embed_url,
+                        "thumb_url": embed_url,
+                        "source_url": source_url
+                    }],
+                    "data_uri": data_uri,
+                    "size": len(embed_resp.content),
+                    "content_type": ct,
+                    "direct_url": embed_url,
+                    "source_url": source_url,
+                    "is_ugoira": False,
+                    "ugoira_meta": None
+                }
+    except Exception as e:
+        print(f"[!] Secondary Pixiv fallback failed: {e}")
+
+    return None
 def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
     """Resolves Twitter artwork including multi-photo tweets, author, and media."""
     m = re.search(r'(?:twitter\.com|x\.com)/([^/]+)/status/(\d+)', url)
@@ -974,11 +1103,15 @@ def api_fetch_image():
         if tw_res:
             return jsonify(tw_res)
 
-    # 2. Specialized Pixiv artwork resolver (supports multi-page)
-    if "pixiv.net" in url:
+    # 2. Specialized Pixiv artwork resolver (supports multi-page and fallback)
+    if "pixiv.net" in url or "pximg.net" in url:
         px_res = resolve_pixiv(url)
         if px_res:
             return jsonify(px_res)
+        else:
+            return jsonify({
+                "error": "Failed to load Pixiv artwork. If this artwork requires logging into Pixiv (e.g. R-18 or member-only), please configure your Pixiv PHPSESSID in Settings."
+            }), 400
 
     # 3. Direct image or generic OpenGraph check
     headers = {
@@ -1017,8 +1150,13 @@ def api_fetch_image():
         if og_match:
             og_img_url = og_match.group(1).replace("&amp;", "&")
             og_lower = og_img_url.lower()
-            # NEVER accept user avatar or profile images as artwork!
-            if not any(bad in og_lower for bad in ("profile_images", "avatar", "default_profile", "user_avatar")):
+            # NEVER accept user avatar, profile images, or generic Pixiv placeholders as artwork!
+            bad_og_patterns = (
+                "profile_images", "avatar", "default_profile", "user_avatar",
+                "pixiv_logo", "pixiv_ogp", "pixiv.png", "/common/images/", 
+                "s.pximg.net", "source.pixiv.net", "static.pixiv.net"
+            )
+            if not any(bad in og_lower for bad in bad_og_patterns):
                 try:
                     img_resp = requests.get(og_img_url, headers=headers, timeout=10)
                     if img_resp.status_code == 200 and img_resp.headers.get("Content-Type", "").startswith("image/"):
