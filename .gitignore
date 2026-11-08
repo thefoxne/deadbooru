@@ -4,6 +4,13 @@ __pycache__/
 *$py.class
 *.pyc
 
+# PyInstaller build artifacts
+build/
+dist/
+dist_package/
+*.spec
+*.zip
+
 # Local User Settings (Contains sensitive Discord Webhook URLs)
 settings.json
 .env

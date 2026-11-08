@@ -27,7 +27,13 @@ from flask import Flask, request, jsonify, render_template, Response
 # Paths & Settings Manager (settings.json decoupled)
 # ---------------------------------------------------------------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    BUNDLE_DIR = getattr(sys, "_MEIPASS", BASE_DIR)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BUNDLE_DIR = BASE_DIR
+
 DATA_DIR = os.path.join(BASE_DIR, "data")
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
 
@@ -150,6 +156,16 @@ class TagDatabase:
         if valid_files:
             valid_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
             return valid_files[0]
+
+        # Check inside bundled data directory (for PyInstaller standalone exe)
+        bundled_files = glob.glob(os.path.join(BUNDLE_DIR, "data", "*.*"))
+        bundled_valid = [
+            f for f in bundled_files
+            if f.lower().endswith((".csv", ".xlsx", ".xls", ".tsv"))
+        ]
+        if bundled_valid:
+            bundled_valid.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            return bundled_valid[0]
 
         # Fallback to Downloads directory
         downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -402,7 +418,7 @@ class TagDatabase:
 # Flask Application Setup
 # ---------------------------------------------------------------------------
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.join(BUNDLE_DIR, "templates"))
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 tag_db: TagDatabase = TagDatabase()
