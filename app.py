@@ -124,6 +124,31 @@ CATEGORY_MAP = {
     "meta": "meta"
 }
 
+def levenshtein(s1: str, s2: str, max_dist: int = 2) -> int:
+    """Calculates Levenshtein distance between s1 and s2 with early termination."""
+    if s1 == s2:
+        return 0
+    if abs(len(s1) - len(s2)) > max_dist:
+        return max_dist + 1
+    if len(s1) < len(s2):
+        s1, s2 = s2, s1
+    if not s2:
+        return len(s1)
+
+    previous_row = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        if min(current_row) > max_dist:
+            return max_dist + 1
+        previous_row = current_row
+    return previous_row[-1]
+
+
 class TagDatabase:
     def __init__(self, initial_path: Optional[str] = None):
         self.tags: List[Tuple[str, str, int]] = []
@@ -323,52 +348,132 @@ class TagDatabase:
         self.current_filename = os.path.basename(source_name)
 
     def search(self, query: str, limit: int = 15, category: Optional[str] = None) -> List[Dict]:
-        query = query.lower().strip().replace(" ", "_")
-        if not query:
+        """Danbooru-standard tag search with category prefixes, word boundaries, and typo correction."""
+        raw_query = query.strip()
+        if not raw_query:
             return []
 
-        is_wildcard = query.startswith("*")
-        clean_q = query.lstrip("*") if is_wildcard else query
+        # Parse category prefix (e.g. art:wada, char:miku, copy:touhou, gen:solo)
+        category_filter = category if category and category != "all" else None
+        prefix_token = ""
+        cat_prefixes = [
+            ("artist:", "artist"), ("art:", "artist"),
+            ("character:", "character"), ("char:", "character"),
+            ("copyright:", "copyright"), ("copy:", "copyright"),
+            ("meta:", "meta"),
+            ("general:", "general"), ("gen:", "general")
+        ]
+        q_lower = raw_query.lower()
+        for pfx, cat_name in cat_prefixes:
+            if q_lower.startswith(pfx):
+                category_filter = cat_name
+                prefix_token = raw_query[:len(pfx)]
+                raw_query = raw_query[len(pfx):]
+                break
+
+        q = raw_query.lower().strip().replace(" ", "_")
+        if not q:
+            return []
+
+        is_wildcard = q.startswith("*")
+        clean_q = q.lstrip("*") if is_wildcard else q
         if not clean_q:
             return []
 
-        prefix_matches: List[Tuple[str, str, int]] = []
-        sub_matches: List[Tuple[str, str, int]] = []
+        # Pattern matching for word-boundary abbreviations (e.g. bl_ey -> blue_eyes, c_e -> cat_ears)
+        is_pattern = "_" in clean_q
+        pattern_re = None
+        if is_pattern:
+            parts = [re.escape(p) for p in clean_q.split("_") if p]
+            if len(parts) >= 2:
+                pattern_re = re.compile("^" + "[^_]*_".join(parts))
 
-        search_candidates = self.tags
-        if not is_wildcard and len(clean_q) in (1, 2) and clean_q in self.prefix_index:
-            search_candidates = self.prefix_index[clean_q]
+        exact_matches = []
+        prefix_matches = []
+        word_start_matches = []
+        pattern_matches = []
+        sub_matches = []
 
-        for item in search_candidates:
+        candidates = self.tags
+        if category_filter:
+            candidates = [t for t in candidates if t[1] == category_filter]
+
+        for item in candidates:
             name, cat, cnt = item
-            if category and category != "all" and cat != category:
-                continue
+            nl = name.lower()
 
-            name_lower = name.lower()
-
-            if not is_wildcard and name_lower.startswith(clean_q):
+            if nl == clean_q:
+                exact_matches.append(item)
+            elif not is_wildcard and nl.startswith(clean_q):
                 prefix_matches.append(item)
-                if len(prefix_matches) >= limit:
-                    break
-            elif clean_q in name_lower:
-                if len(sub_matches) < limit:
-                    sub_matches.append(item)
+            elif f"_{clean_q}" in nl:
+                word_start_matches.append(item)
+            elif pattern_re and pattern_re.search(nl):
+                pattern_matches.append(item)
+            elif clean_q in nl:
+                sub_matches.append(item)
 
         results = []
         seen = set()
 
-        for item in prefix_matches + sub_matches:
-            name, cat, cnt = item
-            if name not in seen:
-                seen.add(name)
-                results.append({
-                    "name": name,
-                    "category": cat,
-                    "count": cnt,
-                    "count_formatted": self.format_count(cnt)
-                })
-                if len(results) >= limit:
-                    break
+        # Combine in strict Danbooru ranking order
+        ordered_buckets = [
+            exact_matches,
+            prefix_matches,
+            word_start_matches,
+            pattern_matches,
+            sub_matches
+        ]
+
+        for bucket in ordered_buckets:
+            for item in bucket:
+                name, cat, cnt = item
+                if name not in seen:
+                    seen.add(name)
+                    display_name = (prefix_token + name) if prefix_token else name
+                    results.append({
+                        "name": display_name,
+                        "raw_name": name,
+                        "category": cat,
+                        "count": cnt,
+                        "count_formatted": self.format_count(cnt),
+                        "is_typo": False
+                    })
+                    if len(results) >= limit:
+                        break
+            if len(results) >= limit:
+                break
+
+        # Fuzzy / Typo matching if fewer results than limit and clean_q >= 3 chars
+        if len(results) < limit and len(clean_q) >= 3 and not is_wildcard and not is_pattern:
+            fuzzy = []
+            q_len = len(clean_q)
+            q_chars = set(clean_q)
+            for item in candidates:
+                name, cat, cnt = item
+                if name in seen:
+                    continue
+                nl = name.lower()
+                if abs(len(nl) - q_len) <= 2:
+                    if len(q_chars.intersection(nl)) >= len(q_chars) - 2:
+                        dist = levenshtein(clean_q, nl, max_dist=2)
+                        if dist <= 2:
+                            fuzzy.append((dist, -cnt, item))
+
+            fuzzy.sort(key=lambda x: (x[0], x[1]))
+            for dist, _, item in fuzzy[:limit - len(results)]:
+                name, cat, cnt = item
+                if name not in seen:
+                    seen.add(name)
+                    display_name = (prefix_token + name) if prefix_token else name
+                    results.append({
+                        "name": display_name,
+                        "raw_name": name,
+                        "category": cat,
+                        "count": cnt,
+                        "count_formatted": self.format_count(cnt),
+                        "is_typo": True
+                    })
 
         return results
 
@@ -419,7 +524,7 @@ class TagDatabase:
 # ---------------------------------------------------------------------------
 
 app = Flask(__name__, template_folder=os.path.join(BUNDLE_DIR, "templates"))
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 150 * 1024 * 1024
 
 tag_db: TagDatabase = TagDatabase()
 session_posts: List[Dict] = []
@@ -668,6 +773,31 @@ def resolve_pixiv(url: str) -> Optional[Dict[str, Any]]:
         tags = [t["tag"] for t in body.get("tags", {}).get("tags", [])]
         published = body.get("uploadDate", "")
 
+        # Check if Pixiv artwork is an Ugoira (illustType == 2)
+        is_ugoira = (body.get("illustType") == 2)
+        ugoira_meta = None
+        if is_ugoira:
+            try:
+                r_ugoira = requests.get(f"https://www.pixiv.net/ajax/illust/{illust_id}/ugoira_meta", headers=headers, timeout=8)
+                if r_ugoira.status_code == 200:
+                    u_data = r_ugoira.json().get("body", {})
+                    frames = u_data.get("frames", [])
+                    total_dur = sum(f.get("delay", 0) for f in frames)
+                    ugoira_meta = {
+                        "src": u_data.get("src"),
+                        "mime_type": u_data.get("mime_type", "image/jpeg"),
+                        "frames": frames,
+                        "frame_count": len(frames),
+                        "duration_ms": total_dur,
+                        "duration_sec": round(total_dur / 1000.0, 2)
+                    }
+                    if "ugoira" not in [t.lower() for t in tags]:
+                        tags.append("ugoira")
+                    if "animated" not in [t.lower() for t in tags]:
+                        tags.append("animated")
+            except Exception as e:
+                print(f"[!] ugoira_meta fetch error: {e}")
+
         # Check pages endpoint
         r_pages = requests.get(f"https://www.pixiv.net/ajax/illust/{illust_id}/pages", headers=headers, timeout=8)
         pages = []
@@ -725,7 +855,9 @@ def resolve_pixiv(url: str) -> Optional[Dict[str, Any]]:
             "size": len(img_r.content),
             "content_type": ct,
             "direct_url": pages[0]["img_url"],
-            "source_url": pages[0]["source_url"]
+            "source_url": pages[0]["source_url"],
+            "is_ugoira": is_ugoira,
+            "ugoira_meta": ugoira_meta
         }
     except Exception as e:
         print(f"[!] resolve_pixiv error: {e}")
@@ -748,6 +880,37 @@ def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
         screen_name = tweet.get("author", {}).get("screen_name", user)
         published = tweet.get("created_at", "")
         photos = tweet.get("media", {}).get("photos", [])
+        videos = tweet.get("media", {}).get("videos", [])
+
+        if not photos and videos:
+            vid = videos[0]
+            duration = vid.get("duration", 0)
+            if duration > 140.5:
+                mins = int(duration // 60)
+                secs = int(duration % 60)
+                return {
+                    "success": False,
+                    "error": f"Video duration ({mins}:{secs:02d}) exceeds 2:20 (140s) limit! Danbooru only accepts videos up to 2:20."
+                }
+            return {
+                "success": True,
+                "type": "video",
+                "is_video": True,
+                "video_url": vid.get("url"),
+                "thumb_url": vid.get("thumbnail_url"),
+                "duration": duration,
+                "duration_formatted": f"{int(duration // 60)}:{int(duration % 60):02d}",
+                "width": vid.get("width", 0),
+                "height": vid.get("height", 0),
+                "artist": artist,
+                "screen_name": screen_name,
+                "title": tweet.get("text", "")[:60],
+                "tags": ["video", "animated"],
+                "published": published,
+                "source_url": url,
+                "content_type": "video/mp4"
+            }
+
         if not photos:
             return None
 
@@ -788,7 +951,9 @@ def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
             "size": len(img_r.content),
             "content_type": ct,
             "direct_url": pages[0]["img_url"],
-            "source_url": pages[0]["source_url"]
+            "source_url": pages[0]["source_url"],
+            "is_ugoira": is_ugoira,
+            "ugoira_meta": ugoira_meta
         }
     except Exception as e:
         print(f"[!] resolve_twitter error: {e}")
@@ -913,6 +1078,33 @@ def api_test_webhook():
 # -----------------------------------------------------------
 # Upload / Post Action
 # -----------------------------------------------------------
+
+@app.route("/api/proxy_ugoira", methods=["GET"])
+def api_proxy_ugoira():
+    """Proxies Pixiv Ugoira zip archive with Referer headers directly to frontend."""
+    src = request.args.get("src", "").strip()
+    if not src or "pximg.net" not in src:
+        return jsonify({"error": "Invalid ugoira source URL"}), 400
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.pixiv.net/"
+    }
+    try:
+        req = requests.get(src, headers=headers, stream=True, timeout=30)
+        return Response(
+            req.iter_content(chunk_size=128 * 1024),
+            status=req.status_code,
+            content_type=req.headers.get("Content-Type", "application/zip"),
+            headers={
+                "Content-Length": req.headers.get("Content-Length", ""),
+                "Cache-Control": "public, max-age=86400",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload():

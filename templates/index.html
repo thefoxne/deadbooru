@@ -1316,6 +1316,8 @@
       display: block;
     }
   </style>
+  <!-- Offline & CDN fallback Ugoira zip decompressor (fflate) -->
+  <script src="/static/js/fflate.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js';"></script>
 </head>
 <body class="theme-dark" data-current-user-theme="dark">
 
@@ -1382,14 +1384,14 @@
           <p class="text-center mb-2" style="color: var(--muted-text-color); font-size: 13px;">&mdash; or &mdash;</p>
           <div class="dropzone-hint">
             <div class="dropzone-hint-title">Choose file or drag image here</div>
-            <div class="fineprint">Max size: 100 MB. (Or paste image / URL with <kbd style="background:var(--subnav-menu-background-color); padding:2px 6px; border-radius:3px; border:1px solid var(--default-border-color);">Ctrl + V</kbd>)</div>
+            <div class="fineprint">Max size: 150 MB • Videos up to 2:20 • Pixiv Ugoira supported. (Or paste image / video / URL with <kbd style="background:var(--subnav-menu-background-color); padding:2px 6px; border-radius:3px; border:1px solid var(--default-border-color);">Ctrl + V</kbd>)</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Hidden file input -->
-    <input type="file" id="prompt-file-input" accept="image/*" style="display: none;">
+    <input type="file" id="prompt-file-input" accept="image/*,video/mp4,video/webm,video/quicktime" style="display: none;">
 
     <!-- =============================================================
          VIEW 1.5: Multi-Image Post Gallery (#view-multi-gallery)
@@ -1471,9 +1473,18 @@
               <button type="button" onclick="showMultiGallery()" style="background:none; border:none; color:#93c5fd; cursor:pointer; font-size: 11px; padding: 0 4px;" title="View album gallery">☷ Album</button>
             </div>
 
-            <!-- Transform wrapper for smooth Zoom & Pan -->
+            <!-- Floating Ugoira Player Toolbar -->
+            <div id="ugoira-player-pill" style="display: none; position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-family: var(--monospace-font); border: 1px solid rgba(255,255,255,0.25); z-index: 25; align-items: center; gap: 8px;">
+              <button type="button" id="btn-ugoira-play" onclick="toggleUgoiraPlayback()" style="background:#0075f8; border:none; color:#fff; border-radius:4px; padding:3px 10px; cursor:pointer; font-weight:700; font-size:11px;">▶ Play</button>
+              <span id="ugoira-frame-text" style="color:#e2e8f0;">Ugoira</span>
+              <span id="ugoira-progress-text" style="display: none; color:#93c5fd; font-weight:600;">0%</span>
+            </div>
+
+            <!-- Transform wrapper for smooth Zoom & Pan (Images, Ugoira Canvas & Videos) -->
             <div id="dock-img-wrapper" class="img-transform-wrapper">
               <img id="dock-img-preview" src="" alt="Uploaded image" style="display: none;" draggable="false">
+              <canvas id="dock-ugoira-canvas" style="display: none; max-width: 100%; max-height: 100%; pointer-events: none;"></canvas>
+              <video id="dock-video-preview" controls loop playsinline style="display: none; max-width: 100%; max-height: 100%; pointer-events: auto;"></video>
             </div>
             
             <div id="dock-stage-placeholder" class="stage-placeholder">
@@ -1887,6 +1898,8 @@
     const promptFileInput = document.getElementById("prompt-file-input");
     const promptUrlInput = document.getElementById("prompt-url-input");
     const dockImgPreview = document.getElementById("dock-img-preview");
+    const dockUgoiraCanvas = document.getElementById("dock-ugoira-canvas");
+    const dockVideoPreview = document.getElementById("dock-video-preview");
     const dockStagePlaceholder = document.getElementById("dock-stage-placeholder");
     const dockPlaceholderTitle = document.getElementById("dock-placeholder-title");
     const dockPlaceholderDesc = document.getElementById("dock-placeholder-desc");
@@ -2126,10 +2139,11 @@
 
       const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items || [];
       for (let item of items) {
-        if (item.type && item.type.indexOf("image") !== -1) {
+        if (item.type && (item.type.indexOf("image") !== -1 || item.type.indexOf("video") !== -1)) {
           const blob = item.getAsFile();
-          processSelectedImage(blob, "clipboard_image.png");
-          showToast("Pasted image from clipboard into RAM!");
+          const isVid = item.type.indexOf("video") !== -1;
+          processSelectedMedia(blob, isVid ? "clipboard_video.mp4" : "clipboard_image.png");
+          showToast(isVid ? "Pasted video from clipboard into RAM!" : "Pasted image from clipboard into RAM!");
           return;
         }
       }
@@ -2156,10 +2170,14 @@
       }, 50);
     });
 
-    // Process Selected Local Image
-    function processSelectedImage(file, customName = null) {
-      if (!file || !file.type || !file.type.startsWith("image/")) {
-        showToast("Please choose a valid image file (PNG, JPG, WEBP, GIF)!", true);
+    // Process Selected Media (Images & Videos up to 2:20)
+    function processSelectedMedia(file, customName = null) {
+      if (!file) return;
+      const isVideo = (file.type && file.type.startsWith("video/")) || /\.(mp4|webm|mov)$/i.test(file.name || "");
+      const isImage = (file.type && file.type.startsWith("image/")) || /\.(png|jpe?g|webp|gif)$/i.test(file.name || "");
+
+      if (!isVideo && !isImage) {
+        showToast("Please choose a valid image (PNG, JPG, WEBP, GIF) or video (MP4, WEBM, MOV)!", true);
         return;
       }
 
@@ -2167,14 +2185,50 @@
       multiPages = [];
       document.getElementById("multi-page-pill").style.display = "none";
 
-      const fname = customName || file.name || "image.png";
-      const ext = fname.includes(".") ? "." + fname.split(".").pop().toLowerCase() : ".png";
+      const fname = customName || file.name || (isVideo ? "video.mp4" : "image.png");
+      const ext = fname.includes(".") ? "." + fname.split(".").pop().toLowerCase() : (isVideo ? ".mp4" : ".png");
+
+      if (isVideo) {
+        const testVideo = document.createElement("video");
+        testVideo.preload = "metadata";
+        const blobUrl = URL.createObjectURL(file);
+        testVideo.src = blobUrl;
+        testVideo.onloadedmetadata = () => {
+          const dur = testVideo.duration;
+          if (dur > 140.5) {
+            const m = Math.floor(dur / 60);
+            const s = Math.floor(dur % 60).toString().padStart(2, '0');
+            showToast(`Video duration (${m}:${s}) exceeds 2:20 (140s) limit! Danbooru only accepts videos up to 2:20.`, true);
+            URL.revokeObjectURL(blobUrl);
+            currentFile = null;
+            return;
+          }
+          viewUploadPrompt.style.display = "none";
+          viewTaggingDock.style.display = "block";
+          setPreviewVideo(blobUrl, file.size, file.type, ext, testVideo.videoWidth, testVideo.videoHeight, dur);
+          const cur = tagsDockInput.value.trim();
+          if (!cur.includes("video")) {
+            tagsDockInput.value = cur ? `${cur} video ` : "video ";
+          }
+          updateDiscordPreview();
+          tagsDockInput.focus();
+        };
+        testVideo.onerror = () => {
+          showToast("Failed to read video file metadata!", true);
+          URL.revokeObjectURL(blobUrl);
+        };
+        return;
+      }
+
       const sizeStr = (file.size / 1024 > 1024)
         ? (file.size / (1024 * 1024)).toFixed(1) + " MB"
         : Math.round(file.size / 1024) + " KB";
 
       const reader = new FileReader();
       reader.onload = (e) => {
+        stopUgoira();
+        if (dockVideoPreview) { dockVideoPreview.pause(); dockVideoPreview.style.display = "none"; }
+        dockUgoiraCanvas.style.display = "none";
         setPreviewImage(e.target.result, file.size, file.type, ext, sizeStr);
         viewUploadPrompt.style.display = "none";
         viewTaggingDock.style.display = "block";
@@ -2183,12 +2237,13 @@
       };
       reader.readAsDataURL(file);
     }
+    const processSelectedImage = processSelectedMedia;
 
     // -------------------------------------------------------------
     // Image Zoom & Pan Controller (Max 1000%, Wheel Zoom, Drag to Move)
     // -------------------------------------------------------------
-    const MIN_ZOOM = 0.5;   // 50%
-    const MAX_ZOOM = 10.0;  // 1000% max (10x)
+    const MIN_ZOOM = 0.05;  // 5% min
+    const MAX_ZOOM = Infinity; // Unlimited Zoom (no ceiling)
     let currentZoom = 1.0;
     let panX = 0;
     let panY = 0;
@@ -2203,13 +2258,19 @@
       if (!wrapper) return;
       wrapper.style.transition = smooth ? "transform 0.12s ease-out" : "none";
       wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom}) rotate(${currentRotation}deg)`;
+      // Keep pixels crisp when zooming deeply into artwork
+      if (currentZoom >= 3.0) {
+        wrapper.style.imageRendering = "pixelated";
+      } else {
+        wrapper.style.imageRendering = "auto";
+      }
       if (badge) {
         badge.textContent = Math.round(currentZoom * 100) + "%";
       }
     }
 
     function zoomStep(delta) {
-      currentZoom = Math.min(Math.max(MIN_ZOOM, currentZoom + delta), MAX_ZOOM);
+      currentZoom = Math.max(MIN_ZOOM, currentZoom + delta);
       updateTransform(true);
     }
 
@@ -2238,9 +2299,9 @@
           displayedW = stageH * aspectImg;
         }
         const ratio = img.naturalWidth / displayedW;
-        currentZoom = Math.min(Math.max(MIN_ZOOM, ratio), MAX_ZOOM);
+        currentZoom = Math.max(MIN_ZOOM, ratio);
       } else {
-        currentZoom = Math.min(2.0, MAX_ZOOM);
+        currentZoom = 2.0;
       }
       panX = 0;
       panY = 0;
@@ -2263,8 +2324,8 @@
         e.preventDefault();
 
         // Scroll up (e.deltaY < 0): zoom in; Scroll down (e.deltaY > 0): zoom out
-        const factor = e.deltaY < 0 ? 1.15 : 0.87;
-        const newZoom = Math.min(Math.max(MIN_ZOOM, currentZoom * factor), MAX_ZOOM);
+        const factor = e.deltaY < 0 ? 1.18 : 0.85;
+        const newZoom = Math.max(MIN_ZOOM, currentZoom * factor);
 
         if (newZoom === currentZoom) return;
 
@@ -2330,6 +2391,198 @@
         }
       });
     })();
+
+        // -------------------------------------------------------------
+    // Video Preview Controller (Max 2:20 duration)
+    // -------------------------------------------------------------
+    function setPreviewVideo(srcUrl, size = 0, mime = "video/mp4", ext = ".mp4", width = 0, height = 0, duration = 0) {
+      stopUgoira();
+      dockImgPreview.style.display = "none";
+      dockUgoiraCanvas.style.display = "none";
+      dockVideoPreview.style.display = "block";
+      dockVideoPreview.src = srcUrl;
+      dockStagePlaceholder.style.display = "none";
+      const zoomControls = document.getElementById("stage-zoom-controls");
+      if (zoomControls) zoomControls.style.display = "flex";
+      resetZoomToFit();
+
+      dockVideoPreview.onloadedmetadata = function() {
+        const dur = dockVideoPreview.duration || duration;
+        if (dur > 140.5) {
+          const m = Math.floor(dur / 60);
+          const s = Math.floor(dur % 60).toString().padStart(2, '0');
+          showToast(`Video duration (${m}:${s}) exceeds 2:20 (140s) limit! Danbooru only accepts videos up to 2:20.`, true);
+          resetToUploadPrompt();
+          return;
+        }
+        const m = Math.floor(dur / 60);
+        const s = Math.floor(dur % 60).toString().padStart(2, '0');
+        const w = dockVideoPreview.videoWidth || width;
+        const h = dockVideoPreview.videoHeight || height;
+        dockFileDims.textContent = `${w}x${h} (${m}:${s})`;
+        const displaySize = size > 1024 * 1024 ? (size / (1024 * 1024)).toFixed(1) + " MB" : (size > 0 ? Math.round(size / 1024) + " KB" : "Video");
+        dockFileSize.textContent = displaySize;
+        dockFileExt.textContent = ext || ".mp4";
+      };
+      dockVideoPreview.play().catch(() => {});
+    }
+
+    // -------------------------------------------------------------
+    // Pixiv Ugoira Animated Artwork Player (Canvas-based)
+    // -------------------------------------------------------------
+    let ugoiraData = null;
+    let ugoiraFrames = [];
+    let ugoiraImages = [];
+    let ugoiraCurrentFrame = 0;
+    let ugoiraTimer = null;
+    let ugoiraIsPlaying = false;
+    let ugoiraIsLoaded = false;
+
+    function setupUgoira(data) {
+      stopUgoira();
+      ugoiraData = data.ugoira_meta;
+      document.getElementById("ugoira-player-pill").style.display = "flex";
+      document.getElementById("btn-ugoira-play").textContent = "▶ Play";
+      document.getElementById("ugoira-frame-text").textContent = `Ugoira (${ugoiraData.frame_count} frames, ${ugoiraData.duration_sec}s)`;
+      document.getElementById("ugoira-progress-text").style.display = "none";
+    }
+
+    function stopUgoira() {
+      ugoiraIsPlaying = false;
+      if (ugoiraTimer) {
+        clearTimeout(ugoiraTimer);
+        ugoiraTimer = null;
+      }
+      const pill = document.getElementById("ugoira-player-pill");
+      if (pill) pill.style.display = "none";
+      const canvas = document.getElementById("dock-ugoira-canvas");
+      if (canvas) canvas.style.display = "none";
+      ugoiraData = null;
+      ugoiraFrames = [];
+      ugoiraImages = [];
+      ugoiraCurrentFrame = 0;
+      ugoiraIsLoaded = false;
+    }
+
+    async function toggleUgoiraPlayback() {
+      if (!ugoiraData) return;
+      const btnPlay = document.getElementById("btn-ugoira-play");
+      const progressText = document.getElementById("ugoira-progress-text");
+
+      if (ugoiraIsPlaying) {
+        ugoiraIsPlaying = false;
+        if (ugoiraTimer) clearTimeout(ugoiraTimer);
+        btnPlay.textContent = "▶ Play";
+        return;
+      }
+
+      if (ugoiraIsLoaded && ugoiraImages.length > 0) {
+        ugoiraIsPlaying = true;
+        btnPlay.textContent = "⏸ Pause";
+        playNextUgoiraFrame();
+        return;
+      }
+
+      // Download and unpack Pixiv Ugoira Zip
+      btnPlay.disabled = true;
+      btnPlay.textContent = "⏳ Loading...";
+      progressText.style.display = "inline";
+      progressText.textContent = "Downloading...";
+
+      try {
+        const zipUrl = `/api/proxy_ugoira?src=${encodeURIComponent(ugoiraData.src)}`;
+        const resp = await fetch(zipUrl);
+        if (!resp.ok) throw new Error("Failed to download ugoira zip archive");
+
+        const reader = resp.body.getReader();
+        const contentLength = +resp.headers.get("Content-Length") || (20 * 1024 * 1024);
+        let receivedLength = 0;
+        let chunks = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          receivedLength += value.length;
+          const pct = Math.min(99, Math.round((receivedLength / contentLength) * 100));
+          progressText.textContent = `${pct}%`;
+        }
+
+        progressText.textContent = "Unpacking...";
+        const allChunks = new Uint8Array(receivedLength);
+        let position = 0;
+        for (let chunk of chunks) {
+          allChunks.set(chunk, position);
+          position += chunk.length;
+        }
+
+        // Unzip via fflate
+        const unzipped = (window.fflate || fflate).unzipSync(allChunks);
+        progressText.textContent = "Rendering...";
+
+        ugoiraFrames = ugoiraData.frames;
+        ugoiraImages = [];
+
+        for (let i = 0; i < ugoiraFrames.length; i++) {
+          const fInfo = ugoiraFrames[i];
+          const rawBytes = unzipped[fInfo.file];
+          if (rawBytes) {
+            const blob = new Blob([rawBytes], { type: ugoiraData.mime_type || "image/jpeg" });
+            const img = new Image();
+            img.src = URL.createObjectURL(blob);
+            ugoiraImages.push(img);
+          }
+        }
+
+        await new Promise((resolve) => {
+          if (ugoiraImages[0].complete) resolve();
+          else ugoiraImages[0].onload = resolve;
+        });
+
+        const canvas = document.getElementById("dock-ugoira-canvas");
+        canvas.width = ugoiraImages[0].naturalWidth;
+        canvas.height = ugoiraImages[0].naturalHeight;
+        dockImgPreview.style.display = "none";
+        canvas.style.display = "block";
+
+        ugoiraIsLoaded = true;
+        ugoiraIsPlaying = true;
+        btnPlay.disabled = false;
+        btnPlay.textContent = "⏸ Pause";
+        progressText.style.display = "none";
+
+        ugoiraCurrentFrame = 0;
+        playNextUgoiraFrame();
+      } catch (err) {
+        console.error("Ugoira load error:", err);
+        showToast("Error loading Ugoira animation: " + err.message, true);
+        btnPlay.disabled = false;
+        btnPlay.textContent = "▶ Play";
+        progressText.style.display = "none";
+      }
+    }
+
+    function playNextUgoiraFrame() {
+      if (!ugoiraIsPlaying || ugoiraImages.length === 0) return;
+      const canvas = document.getElementById("dock-ugoira-canvas");
+      const ctx = canvas.getContext("2d");
+      const img = ugoiraImages[ugoiraCurrentFrame];
+      const frameInfo = ugoiraFrames[ugoiraCurrentFrame];
+
+      if (img && img.complete) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      }
+
+      document.getElementById("ugoira-frame-text").textContent = `Frame ${ugoiraCurrentFrame + 1} / ${ugoiraFrames.length}`;
+
+      const delay = (frameInfo && frameInfo.delay) ? frameInfo.delay : 30;
+      ugoiraCurrentFrame = (ugoiraCurrentFrame + 1) % ugoiraFrames.length;
+
+      ugoiraTimer = setTimeout(() => {
+        playNextUgoiraFrame();
+      }, delay);
+    }
 
     // Set Image into Stage
     function setPreviewImage(dataUri, size = 0, mime = "image/png", ext = ".png", sizeStr = "") {
@@ -2400,6 +2653,21 @@
             document.getElementById("multi-page-pill").style.display = "none";
             const btnBack = document.getElementById("btn-back-to-gallery");
             if (btnBack) btnBack.style.display = "none";
+          }
+
+          if (data.is_video && data.video_url) {
+            setPreviewVideo(data.video_url, data.size || 0, data.content_type || "video/mp4", ".mp4", data.width, data.height, data.duration);
+            showToast("🎉 Video loaded successfully! (Duration: " + (data.duration_formatted || "<= 2:20") + ")");
+            return;
+          }
+
+          if (data.is_ugoira && data.ugoira_meta) {
+            if (data.data_uri) {
+              setPreviewImage(data.data_uri, data.size, data.content_type);
+            }
+            setupUgoira(data);
+            showToast(`🎉 Pixiv Ugoira loaded! (${data.ugoira_meta.frame_count} frames)`);
+            return;
           }
 
           if (data.data_uri) {
@@ -2636,6 +2904,12 @@
     }
 
     function resetToUploadPrompt() {
+      stopUgoira();
+      if (dockVideoPreview) {
+        dockVideoPreview.pause();
+        dockVideoPreview.src = "";
+        dockVideoPreview.style.display = "none";
+      }
       currentFile = null;
       multiPages = [];
       document.getElementById("multi-page-pill").style.display = "none";
@@ -2766,11 +3040,23 @@
       currentSuggestions.forEach((item, idx) => {
         const li = document.createElement("li");
         li.className = `ui-menu-item ${idx === activeAutocompleteIndex ? 'active' : ''}`;
+        
+        let typoBadge = "";
+        if (item.is_typo) {
+          typoBadge = `<span style="font-size: 10px; background: rgba(245, 158, 11, 0.2); color: #f59e0b; padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 6px;">did you mean?</span>`;
+        }
+        
         li.innerHTML = `
-          <span class="tag-name-text cat-${item.category}">${escapeHtml(item.name)}</span>
+          <div style="display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <span class="tag-name-text cat-${item.category}">${escapeHtml(item.name)}</span>
+            ${typoBadge}
+          </div>
           <span class="tag-count-text">${item.count_formatted}</span>
         `;
-        li.addEventListener("click", () => selectTag(item.name));
+        li.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          selectTag(item.name);
+        });
         dockAutocompleteList.appendChild(li);
       });
     }

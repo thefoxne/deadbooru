@@ -31,7 +31,7 @@ jobs:
 
       - name: Build Standalone Executable with PyInstaller
         run: |
-          pyinstaller --onefile --name deadbooru --add-data "templates;templates" --add-data "data;data" app.py
+          pyinstaller --onefile --name deadbooru --add-data "templates;templates" --add-data "data;data" --add-data "static;static" app.py
 
       - name: Package Release ZIP
         shell: pwsh
