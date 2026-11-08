@@ -2973,18 +2973,7 @@
     // -------------------------------------------------------------
     let autocompleteTimer = null;
     tagsDockInput.addEventListener("input", () => {
-      // Check if user accidentally pasted URL into tags textarea
-      const val = tagsDockInput.value;
-      const urlMatch = val.match(/https?:\/\/[^\s]+/i);
-      if (urlMatch) {
-        const extractedUrl = urlMatch[0];
-        tagsDockInput.value = val.replace(extractedUrl, "").trim();
-        dockSourceUrlInput.value = extractedUrl;
-        dockTabSourceInput.value = extractedUrl;
-        showToast("Moved URL to Source URL field automatically!");
-        fetchUrlPrompt(extractedUrl);
-      }
-
+      // Keep any links or source tags typed in tags textarea intact (do not auto-move or hijack)
       clearTimeout(autocompleteTimer);
       autocompleteTimer = setTimeout(() => {
         handleDockAutocomplete();
@@ -3118,9 +3107,17 @@
     });
 
     function getParsedTagsList() {
-      const raw = tagsDockInput.value.trim().toLowerCase();
-      const tokens = raw ? raw.split(/\s+/).filter(t => t.length > 0) : [];
-      const tags = tokens.filter(t => !t.startsWith("http://") && !t.startsWith("https://"));
+      const raw = tagsDockInput.value.trim();
+      if (!raw) return (selectedRating && document.getElementById("switch-rating-tag").checked) ? [`rating:${selectedRating}`] : [];
+
+      const tokens = raw.split(/\s+/).filter(t => t.length > 0);
+      const tags = tokens.map(t => {
+        // Preserve case for URLs (e.g. source:https://... or https://...)
+        if (t.toLowerCase().startsWith("http://") || t.toLowerCase().startsWith("https://") || t.toLowerCase().startsWith("source:http")) {
+          return t;
+        }
+        return t.toLowerCase();
+      });
 
       const isRatingChecked = document.getElementById("switch-rating-tag").checked;
       if (isRatingChecked && selectedRating) {

@@ -1398,12 +1398,16 @@ def api_upload():
     source_link = request.form.get("source_link", "").strip()
     tags_text = request.form.get("tags", "").strip()
 
-    # Normalize tags into clean lowercase single-space separated format (filtering out accidental URLs)
-    tags_list = [
-        t.strip().lower() 
-        for t in re.split(r"\s+", tags_text) 
-        if t.strip() and not t.strip().lower().startswith(("http://", "https://"))
-    ]
+    # Normalize tags into clean single-space separated format, preserving source/viewing URLs
+    tags_list = []
+    for t in re.split(r"\s+", tags_text):
+        t_clean = t.strip()
+        if not t_clean:
+            continue
+        if t_clean.lower().startswith(("http://", "https://", "source:http")):
+            tags_list.append(t_clean)
+        else:
+            tags_list.append(t_clean.lower())
     formatted_tags = " ".join(tags_list)
 
     file = request.files.get("file")
