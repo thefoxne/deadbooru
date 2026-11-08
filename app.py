@@ -17,6 +17,8 @@ import base64
 import argparse
 import webbrowser
 import threading
+import urllib.request
+import urllib.error
 from typing import List, Dict, Tuple, Optional, Any
 from collections import defaultdict
 
@@ -734,16 +736,34 @@ def api_tags_batch():
 
 @app.route("/api/proxy_image")
 def api_proxy_image():
-    """Stream image from Pixiv or Twitter with correct Referer/User-Agent directly into RAM."""
+    """Stream image from Pixiv, Twitter, or Catbox with correct Referer/User-Agent directly into RAM."""
     raw_url = request.args.get("url", "").strip()
     if not raw_url:
         return "Missing URL", 400
+
+    if "catbox.moe" in raw_url:
+        try:
+            req = urllib.request.Request(raw_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                data = resp.read()
+                ct = resp.headers.get_content_type() or "image/png"
+                return Response(data, mimetype=ct)
+        except urllib.error.HTTPError as e:
+            return f"Catbox error: HTTP {e.code}", e.code
+        except Exception as e:
+            return str(e), 500
 
     settings = SettingsManager.load()
     phpsessid = settings.get("pixiv_phpsessid", "").strip()
     cookies = {"PHPSESSID": phpsessid} if phpsessid else {}
 
-    referer = "https://www.pixiv.net/" if ("pximg.net" in raw_url or "pixiv.net" in raw_url) else raw_url
+    if "pximg.net" in raw_url or "pixiv.net" in raw_url:
+        referer = "https://www.pixiv.net/"
+    elif "twimg.com" in raw_url:
+        referer = "https://x.com/"
+    else:
+        referer = raw_url
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Referer": referer
@@ -993,6 +1013,80 @@ def resolve_pixiv(url: str) -> Optional[Dict[str, Any]]:
         print(f"[!] Secondary Pixiv fallback failed: {e}")
 
     return None
+def resolve_catbox(url: str) -> Dict[str, Any]:
+    """Fetch an image or video from Catbox.moe directly into RAM using urllib to avoid TCP resets."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = resp.read()
+            if len(data) > 150 * 1024 * 1024:
+                return {
+                    "success": False,
+                    "error": f"File size exceeds 150 MB limit ({round(len(data)/(1024*1024), 1)} MB)"
+                }
+            ct = resp.headers.get_content_type() or ""
+            url_clean = url.split("?")[0].lower()
+            if not ct or ct == "application/octet-stream":
+                if url_clean.endswith(".png"):
+                    ct = "image/png"
+                elif url_clean.endswith((".jpg", ".jpeg")):
+                    ct = "image/jpeg"
+                elif url_clean.endswith(".webp"):
+                    ct = "image/webp"
+                elif url_clean.endswith(".gif"):
+                    ct = "image/gif"
+                elif url_clean.endswith(".mp4"):
+                    ct = "video/mp4"
+                elif url_clean.endswith(".webm"):
+                    ct = "video/webm"
+                elif url_clean.endswith(".mov"):
+                    ct = "video/quicktime"
+                else:
+                    ct = "image/png"
+
+            if ct.startswith("video/") or url_clean.endswith((".mp4", ".webm", ".mov")):
+                return {
+                    "success": True,
+                    "type": "video",
+                    "is_video": True,
+                    "video_url": url,
+                    "size": len(data),
+                    "content_type": ct if ct.startswith("video/") else "video/mp4",
+                    "source_url": url,
+                    "direct_url": url,
+                    "title": url.split("/")[-1]
+                }
+
+            b64 = base64.b64encode(data).decode("utf-8")
+            data_uri = f"data:{ct};base64,{b64}"
+            return {
+                "success": True,
+                "is_multi": False,
+                "count": 1,
+                "data_uri": data_uri,
+                "size": len(data),
+                "content_type": ct,
+                "direct_url": url,
+                "source_url": url,
+                "title": url.split("/")[-1]
+            }
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {
+                "success": False,
+                "error": "Tệp Catbox không tồn tại hoặc đã bị xóa (HTTP 404). Vui lòng kiểm tra lại đường dẫn."
+            }
+        return {
+            "success": False,
+            "error": f"Catbox server returned HTTP {e.code}: {e.reason}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Lỗi khi tải tệp từ Catbox: {str(e)}"
+        }
+
+
 def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
     """Resolves Twitter artwork including multi-photo tweets, author, and media."""
     m = re.search(r'(?:twitter\.com|x\.com)/([^/]+)/status/(\d+)', url)
@@ -1064,6 +1158,7 @@ def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
         b64 = base64.b64encode(img_r.content).decode("utf-8")
         data_uri = f"data:{ct};base64,{b64}"
 
+        tw_tags = re.findall(r'#(\w+)', tweet.get("text", ""))
         return {
             "success": True,
             "type": "twitter",
@@ -1073,7 +1168,7 @@ def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
             "artist": artist,
             "screen_name": screen_name,
             "title": tweet.get("text", "")[:60],
-            "tags": [],
+            "tags": tw_tags,
             "published": published,
             "pages": pages,
             "data_uri": data_uri,
@@ -1081,8 +1176,8 @@ def resolve_twitter(url: str) -> Optional[Dict[str, Any]]:
             "content_type": ct,
             "direct_url": pages[0]["img_url"],
             "source_url": pages[0]["source_url"],
-            "is_ugoira": is_ugoira,
-            "ugoira_meta": ugoira_meta
+            "is_ugoira": False,
+            "ugoira_meta": None
         }
     except Exception as e:
         print(f"[!] resolve_twitter error: {e}")
@@ -1113,7 +1208,15 @@ def api_fetch_image():
                 "error": "Failed to load Pixiv artwork. If this artwork requires logging into Pixiv (e.g. R-18 or member-only), please configure your Pixiv PHPSESSID in Settings."
             }), 400
 
-    # 3. Direct image or generic OpenGraph check
+    # 3. Specialized Catbox.moe resolver
+    if "catbox.moe" in url:
+        cb_res = resolve_catbox(url)
+        if cb_res.get("success"):
+            return jsonify(cb_res)
+        else:
+            return jsonify({"error": cb_res.get("error", "Failed to load Catbox file")}), 400
+
+    # 4. Direct image or generic OpenGraph check
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": url

@@ -1378,10 +1378,10 @@
         <div class="bg-dropzone">
           <label id="source-label" class="block text-center mb-2" style="font-size: 14px; font-weight: 700;">Paste URL here</label>
           <div style="max-width: 660px; margin: 0 auto; width: 100%;">
-            <input type="text" id="prompt-url-input" class="form-input" style="width: 100%; box-sizing: border-box; text-align: center; font-size: 13px; padding: 10px 16px; border-radius: 4px;" placeholder="Paste a pixiv link, tweet, etc." autofocus>
+            <input type="text" id="prompt-url-input" class="form-input" style="width: 100%; box-sizing: border-box; text-align: center; font-size: 13px; padding: 10px 16px; border-radius: 4px;" placeholder="Paste a pixiv link, tweet, catbox link, etc." autofocus>
           </div>
           <span class="hint fineprint text-center block mt-2">
-            <a href="javascript:void(0)" onclick="showSupportedSites()">See here</a> for a list of supported sites (Twitter, Pixiv, direct image links).
+            <a href="javascript:void(0)" onclick="showSupportedSites()">See here</a> for a list of supported sites (Twitter/X, Pixiv, Catbox, direct image/video links).
           </span>
         </div>
 
@@ -3356,7 +3356,7 @@
     }
 
     function showSupportedSites() {
-      showToast("Supported: Twitter/X (multi-photo), Pixiv (album), Danbooru, Gelbooru, direct image files.");
+      showToast("Supported: Twitter/X (single/multi-photo & video), Pixiv (single/album & ugoira), Catbox.moe, Danbooru, Gelbooru, direct image/video files.");
     }
 
     // -------------------------------------------------------------
