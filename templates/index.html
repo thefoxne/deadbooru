@@ -858,7 +858,7 @@
       background: var(--card-background-color);
       border: 1px solid var(--link-color);
       border-radius: 4px;
-      max-height: 250px;
+      max-height: 320px;
       overflow-y: auto;
       z-index: 1000;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
@@ -3036,7 +3036,7 @@
       }
 
       try {
-        const resp = await fetch(`/api/tags/autocomplete?q=${encodeURIComponent(token)}&limit=10`);
+        const resp = await fetch(`/api/tags/autocomplete?q=${encodeURIComponent(token)}&limit=15`);
         if (!resp.ok) return;
         const items = await resp.json();
         if (items.length === 0) {

@@ -383,72 +383,76 @@ class TagDatabase:
         if not clean_q:
             return []
 
+        has_leading_underscore = clean_q.startswith("_")
+        core_q = clean_q.lstrip("_") if has_leading_underscore else clean_q
+
         # Pattern matching for word-boundary abbreviations (e.g. bl_ey -> blue_eyes, c_e -> cat_ears)
-        is_pattern = "_" in clean_q
+        is_pattern = "_" in clean_q and not has_leading_underscore
         pattern_re = None
         if is_pattern:
             parts = [re.escape(p) for p in clean_q.split("_") if p]
             if len(parts) >= 2:
                 pattern_re = re.compile("^" + "[^_]*_".join(parts))
 
-        exact_matches = []
-        prefix_matches = []
-        word_start_matches = []
-        pattern_matches = []
-        sub_matches = []
-
         candidates = self.tags
         if category_filter:
             candidates = [t for t in candidates if t[1] == category_filter]
+
+        scored = []
+        seen = set()
 
         for item in candidates:
             name, cat, cnt = item
             nl = name.lower()
 
-            if nl == clean_q:
-                exact_matches.append(item)
+            tier = None
+            if nl == clean_q or (core_q and nl == core_q):
+                tier = 0  # Exact match (e.g. breasts == breasts)
+            elif has_leading_underscore:
+                if clean_q in nl:
+                    if nl.endswith(clean_q):
+                        tier = 1  # Suffix match (e.g. _fubuki in shirakami_fubuki)
+                    elif f"{clean_q}_" in nl:
+                        tier = 2  # Word match inside tag
+                    else:
+                        tier = 3  # Substring match
+            elif not is_wildcard and nl.startswith(clean_q + "_"):
+                tier = 1  # Tag starts with query + _ (e.g. breasts_out, blue_eyes)
             elif not is_wildcard and nl.startswith(clean_q):
-                prefix_matches.append(item)
+                tier = 2  # Tag starts with query (e.g. breasts...)
             elif f"_{clean_q}" in nl:
-                word_start_matches.append(item)
+                if nl.endswith(f"_{clean_q}"):
+                    tier = 1  # Word exact match at end of tag (e.g. large_breasts, shirakami_fubuki)
+                elif f"_{clean_q}_" in nl:
+                    tier = 2  # Word exact match inside tag (e.g. between_breasts)
+                else:
+                    tier = 3  # Word prefix match inside tag
             elif pattern_re and pattern_re.search(nl):
-                pattern_matches.append(item)
+                tier = 3  # Abbreviation pattern match (e.g. bl_ey -> blue_eyes)
             elif clean_q in nl:
-                sub_matches.append(item)
+                tier = 4  # Generic substring
+
+            if tier is not None:
+                scored.append((tier, -cnt, item))
+                seen.add(name)
+
+        scored.sort(key=lambda x: (x[0], x[1]))
 
         results = []
-        seen = set()
-
-        # Combine in strict Danbooru ranking order
-        ordered_buckets = [
-            exact_matches,
-            prefix_matches,
-            word_start_matches,
-            pattern_matches,
-            sub_matches
-        ]
-
-        for bucket in ordered_buckets:
-            for item in bucket:
-                name, cat, cnt = item
-                if name not in seen:
-                    seen.add(name)
-                    display_name = (prefix_token + name) if prefix_token else name
-                    results.append({
-                        "name": display_name,
-                        "raw_name": name,
-                        "category": cat,
-                        "count": cnt,
-                        "count_formatted": self.format_count(cnt),
-                        "is_typo": False
-                    })
-                    if len(results) >= limit:
-                        break
-            if len(results) >= limit:
-                break
+        for tier, neg_cnt, item in scored[:limit]:
+            name, cat, cnt = item
+            display_name = (prefix_token + name) if prefix_token else name
+            results.append({
+                "name": display_name,
+                "raw_name": name,
+                "category": cat,
+                "count": cnt,
+                "count_formatted": self.format_count(cnt),
+                "is_typo": False
+            })
 
         # Fuzzy / Typo matching if fewer results than limit and clean_q >= 3 chars
-        if len(results) < limit and len(clean_q) >= 3 and not is_wildcard and not is_pattern:
+        if len(results) < limit and len(clean_q) >= 3 and not is_wildcard and not is_pattern and not has_leading_underscore:
             fuzzy = []
             q_len = len(clean_q)
             q_chars = set(clean_q)
