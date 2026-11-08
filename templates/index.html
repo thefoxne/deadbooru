@@ -1,0 +1,3278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Upload &amp; Tagging Hub</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 5 L90 28 L50 52 L10 28 Z' fill='%23009be6'/%3E%3Cpath d='M10 33 L47 55 L47 95 L10 72 Z' fill='%230075f8'/%3E%3Cpath d='M53 55 L90 33 L90 72 L53 95 Z' fill='%23005ac3'/%3E%3C/svg%3E">
+
+  <style>
+    /* ==========================================================================
+       Danbooru Official Design System (Matching https://github.com/danbooru/danbooru)
+       ========================================================================== */
+    :root {
+      --text-xxs: 0.5625rem;
+      --text-xs: 0.6875rem;
+      --text-sm: 0.75rem;
+      --text-md: 0.875rem;
+      --text-lg: 1rem;
+      --text-xl: 1.3125rem;
+      --text-xxl: 1.75rem;
+      --header-font: "Tahoma", "Verdana", "Helvetica", sans-serif;
+      --body-font: "Verdana", "Helvetica", sans-serif;
+      --monospace-font: "Consolas", "Courier New", monospace;
+
+      /* Danbooru Palette HSLuv Scale */
+      --grey-0: #f6f6f8;
+      --grey-1: #e8e8ec;
+      --grey-2: #d1d1da;
+      --grey-3: #ababbc;
+      --grey-4: #9192a7;
+      --grey-5: #777892;
+      --grey-6: #5b5c79;
+      --grey-7: #3f4058;
+      --grey-8: #2c2d3f;
+      --grey-9: #1e1e2c;
+
+      --blue-0: #f4f6ff;
+      --blue-5: #0075f8;
+      --blue-6: #005ac3;
+      --azure-3: #4bb4ff;
+      --azure-4: #009be6;
+      --red-4: #ff5a5b;
+      --red-5: #ed2426;
+      --red-6: #c00004;
+      --green-4: #00ab2c;
+      --green-3: #35c64a;
+      --magenta-3: #fd78ff;
+      --magenta-6: #a800aa;
+      --purple-3: #c797ff;
+      --purple-6: #9000df;
+      --purple-7: #6700a1;
+      --purple-8: #421765;
+      --yellow-2: #ead084;
+      --orange-3: #fd9200;
+      --orange-5: #b56700;
+
+      /* Light Theme (Base) */
+      --body-background-color: var(--grey-0);
+      --card-background-color: #ffffff;
+      --text-color: var(--grey-8);
+      --muted-text-color: var(--grey-5);
+      --inverse-text-color: #ffffff;
+      --header-color: var(--grey-9);
+      --link-color: var(--blue-5);
+      --link-hover-color: var(--blue-6);
+      --default-border-color: var(--grey-2);
+      --subnav-menu-background-color: var(--grey-1);
+
+      --general-tag-color: var(--blue-5);
+      --general-tag-hover-color: var(--blue-6);
+      --artist-tag-color: var(--red-6);
+      --artist-tag-hover-color: var(--red-5);
+      --copyright-tag-color: var(--magenta-6);
+      --copyright-tag-hover-color: var(--purple-6);
+      --character-tag-color: var(--green-4);
+      --character-tag-hover-color: var(--green-3);
+      --meta-tag-color: var(--orange-3);
+      --meta-tag-hover-color: var(--orange-5);
+
+      --uploads-dropzone-background: #ffffff;
+      --button-primary-background-color: var(--blue-5);
+      --button-primary-hover-background-color: var(--blue-6);
+      --button-danger-background-color: var(--red-6);
+      --button-danger-hover-background-color: var(--red-5);
+
+      --form-input-background: #ffffff;
+      --form-input-border-color: var(--grey-3);
+      --form-button-background: var(--grey-1);
+      --form-button-border-color: var(--grey-3);
+      --form-button-text-color: var(--grey-9);
+
+      --table-header-border-color: var(--grey-8);
+      --table-row-border-color: var(--grey-1);
+      --table-row-hover-background: #edf5ff;
+      --table-even-row-background: var(--grey-0);
+      --divider-border-color: var(--grey-2);
+      --divider-border-hover-color: var(--orange-5);
+    }
+
+    /* Dark Theme (Official Danbooru Dark) */
+    [data-current-user-theme="dark"], body.theme-dark {
+      --body-background-color: var(--grey-9);
+      --card-background-color: var(--grey-8);
+      --text-color: var(--grey-2);
+      --muted-text-color: var(--grey-4);
+      --inverse-text-color: var(--grey-0);
+      --header-color: var(--grey-1);
+      --link-color: var(--azure-4);
+      --link-hover-color: var(--azure-3);
+      --default-border-color: var(--grey-7);
+      --subnav-menu-background-color: var(--grey-8);
+
+      --general-tag-color: var(--azure-4);
+      --general-tag-hover-color: var(--azure-3);
+      --artist-tag-color: #ff8a8b;
+      --artist-tag-hover-color: #ffc3c3;
+      --copyright-tag-color: var(--purple-3);
+      --copyright-tag-hover-color: #ddc9fb;
+      --character-tag-color: var(--green-3);
+      --character-tag-hover-color: #93e49a;
+      --meta-tag-color: var(--yellow-2);
+      --meta-tag-hover-color: #f7e7c3;
+
+      --uploads-dropzone-background: #232535;
+      --button-primary-background-color: var(--blue-5);
+      --button-primary-hover-background-color: var(--azure-4);
+      --button-danger-background-color: var(--red-6);
+      --button-danger-hover-background-color: var(--red-5);
+
+      --form-input-background: var(--grey-7);
+      --form-input-border-color: var(--grey-5);
+      --form-button-background: var(--grey-2);
+      --form-button-border-color: var(--grey-4);
+      --form-button-text-color: var(--grey-9);
+
+      --table-header-border-color: var(--grey-5);
+      --table-row-border-color: var(--grey-7);
+      --table-row-hover-background: #2d1845;
+      --table-even-row-background: #252636;
+      --divider-border-color: var(--purple-7);
+      --divider-border-hover-color: var(--orange-5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--body-background-color);
+      color: var(--text-color);
+      font-family: var(--body-font);
+      font-size: var(--text-md);
+      line-height: 1.35;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: var(--link-color);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    a:hover {
+      text-decoration: underline;
+      color: var(--link-hover-color);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--header-font);
+      font-weight: bold;
+      color: var(--header-color);
+      line-height: 1.3;
+    }
+
+    h1 { font-size: var(--text-xxl); }
+    h2 { font-size: var(--text-lg); }
+    h3 { font-size: var(--text-md); }
+
+    .fineprint {
+      font-size: var(--text-xs);
+      color: var(--muted-text-color);
+    }
+
+    /* -------------------------------------------------------------
+       Danbooru Header (#top) & Nav (#nav, #main-menu, #subnav-menu)
+       ------------------------------------------------------------- */
+    header#top {
+      background-color: var(--card-background-color);
+      border-bottom: 1px solid var(--default-border-color);
+      padding: 0;
+    }
+
+    .header-brand-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 24px 8px 24px;
+    }
+
+    #app-name-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .danbooru-logo-icon {
+      width: 32px;
+      height: 32px;
+      display: block;
+      transition: filter 0.15s;
+    }
+    .danbooru-logo-icon:hover {
+      filter: brightness(1.2);
+    }
+
+    #app-name {
+      font-family: var(--header-font);
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--link-color);
+      letter-spacing: -0.5px;
+      text-decoration: none !important;
+    }
+
+    .danbooru-tagline {
+      font-size: 11px;
+      color: var(--muted-text-color);
+      border-left: 1px solid var(--default-border-color);
+      padding-left: 8px;
+      margin-left: 4px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+    }
+
+    .header-status-pill {
+      background: rgba(0, 117, 248, 0.1);
+      border: 1px solid rgba(0, 117, 248, 0.3);
+      color: var(--link-color);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .header-status-pill:hover {
+      border-color: var(--link-color);
+      background: rgba(0, 117, 248, 0.18);
+    }
+
+    .theme-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--default-border-color);
+      color: var(--text-color);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .theme-toggle-btn:hover {
+      background: var(--subnav-menu-background-color);
+    }
+
+    nav#nav {
+      background-color: var(--card-background-color);
+    }
+
+    #main-menu {
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-top: 1px solid var(--default-border-color);
+      border-bottom: 1px solid var(--default-border-color);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .main-nav-link {
+      padding: 8px 14px;
+      color: var(--muted-text-color);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.12s;
+      cursor: pointer;
+    }
+    .main-nav-link:hover {
+      color: var(--text-color);
+      text-decoration: none;
+    }
+    .main-nav-link.active {
+      color: var(--link-color);
+      border-bottom: 2px solid var(--link-color);
+      font-weight: 700;
+      margin-bottom: -1px;
+    }
+
+    #subnav-menu {
+      display: flex;
+      align-items: center;
+      padding: 5px 24px;
+      background-color: var(--subnav-menu-background-color);
+      gap: 12px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--default-border-color);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .subnav-link {
+      color: var(--link-color);
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .subnav-link:hover {
+      text-decoration: underline;
+    }
+    .subnav-link.active {
+      font-weight: 700;
+      color: var(--header-color);
+    }
+
+    .subnav-divider {
+      color: var(--default-border-color);
+    }
+
+    .subnav-configure-btn {
+      margin-left: auto;
+      background: rgba(0, 117, 248, 0.12);
+      border: 1px solid rgba(0, 117, 248, 0.35);
+      color: var(--link-color);
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+    .subnav-configure-btn:hover {
+      background: var(--button-primary-background-color);
+      color: #fff;
+    }
+
+    /* -------------------------------------------------------------
+       Danbooru Main Page Wrapper (#page)
+       ------------------------------------------------------------- */
+    #page {
+      flex: 1;
+      width: 100%;
+      max-width: 1700px;
+      margin: 18px auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 768px) {
+      #page {
+        padding: 0 10px;
+        margin: 10px auto;
+      }
+    }
+
+    /* -------------------------------------------------------------
+       Danbooru Buttons (.button-primary, .button-danger, .button-outline-*)
+       ------------------------------------------------------------- */
+    button, input[type="button"], input[type="submit"] {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .button-primary {
+      background-color: var(--button-primary-background-color);
+      border: 1px solid transparent;
+      color: var(--inverse-text-color) !important;
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .button-primary:hover:not(:disabled) {
+      background-color: var(--button-primary-hover-background-color);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      text-decoration: none;
+    }
+    .button-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .button-danger {
+      background-color: var(--button-danger-background-color);
+      border: 1px solid transparent;
+      color: #fff !important;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .button-danger:hover {
+      background-color: var(--button-danger-hover-background-color);
+    }
+
+    .button-outline-primary {
+      background-color: transparent;
+      border: 1px solid var(--link-color);
+      color: var(--link-color);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .button-outline-primary:hover {
+      background-color: var(--link-color);
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .button-outline-danger {
+      background-color: transparent;
+      border: 1px solid var(--red-4);
+      color: var(--red-4);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .button-outline-danger:hover {
+      background-color: var(--button-danger-background-color);
+      color: #fff;
+      border-color: var(--button-danger-background-color);
+      text-decoration: none;
+    }
+
+    .button-xs {
+      padding: 2px 7px;
+      font-size: 11px;
+    }
+    .button-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* -------------------------------------------------------------
+       Danbooru Form Controls (.form-input, .form-textarea, .form-select)
+       ------------------------------------------------------------- */
+    .form-input, .form-textarea, .form-select {
+      background-color: var(--form-input-background);
+      border: 1px solid var(--form-input-border-color);
+      color: var(--text-color);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--link-color);
+      box-shadow: 0 0 0 1px var(--link-color);
+    }
+
+    /* Danbooru Cards */
+    .card {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* =============================================================
+       VIEW 1: Danbooru FileUploadComponent (Exact official markup)
+       ============================================================= */
+    #view-upload-prompt {
+      max-width: 680px;
+      width: 100%;
+      margin: 40px auto 30px auto;
+    }
+
+    .page-heading-title {
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .file-upload-component {
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--default-border-color);
+      background-color: var(--card-background-color);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .bg-dropzone {
+      background-color: var(--uploads-dropzone-background);
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--default-border-color);
+      text-align: center;
+    }
+
+    .dropzone-container {
+      padding: 26px 28px 28px 28px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px dashed transparent;
+      transition: all 0.15s;
+      background: var(--card-background-color);
+      border-radius: 0 0 8px 8px;
+    }
+    .dropzone-container:hover, .dropzone-container.dragover {
+      background-color: rgba(0, 117, 248, 0.05);
+      border-color: var(--link-color);
+    }
+
+    .dropzone-hint-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--header-color);
+      margin-bottom: 4px;
+    }
+
+    /* =============================================================
+       VIEW 2: Danbooru UploadPostComponent (.upload-container)
+       Supports docking: [data-dock="right"], [data-dock="bottom"], [data-dock="left"]
+       ============================================================= */
+    #view-tagging-dock {
+      display: none;
+      width: 100%;
+      flex: 1;
+    }
+
+    .upload-container {
+      --edit-container-width: 480;
+      display: grid;
+      gap: 12px;
+      min-height: calc(100vh - 160px);
+    }
+
+    .upload-container[data-dock="right"] {
+      grid-template-columns: 1fr max-content calc(var(--edit-container-width) * 1px);
+    }
+
+    .upload-container[data-dock="left"] {
+      grid-template-columns: calc(var(--edit-container-width) * 1px) max-content 1fr;
+    }
+    .upload-container[data-dock="left"] .upload-edit-container { order: 1; }
+    .upload-container[data-dock="left"] .upload-divider { order: 2; }
+    .upload-container[data-dock="left"] .upload-image-container { order: 3; }
+
+    .upload-container[data-dock="bottom"] {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto;
+    }
+    .upload-container[data-dock="bottom"] .upload-divider {
+      display: none;
+    }
+
+    @media (max-width: 992px) {
+      .upload-container {
+        grid-template-columns: 1fr !important;
+      }
+      .upload-divider {
+        display: none !important;
+      }
+    }
+
+    /* Left Stage */
+    .upload-image-container {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .media-asset-stage-box {
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      max-height: calc(100vh - 220px);
+      background-color: #0b0c10;
+      border: 1px solid var(--default-border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .img-transform-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      transform-origin: center center;
+      pointer-events: none;
+    }
+
+    .media-asset-stage-box img {
+      max-width: 100%;
+      max-height: calc(100vh - 220px);
+      object-fit: contain;
+      display: block;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    .stage-zoom-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(14, 16, 24, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 4px 8px;
+      border-radius: 6px;
+      z-index: 25;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    }
+
+    .stage-zoom-controls .zoom-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      line-height: 1.4;
+    }
+
+    .stage-zoom-controls .zoom-btn:hover {
+      background: var(--button-primary-background-color, #0075f8);
+      border-color: var(--button-primary-background-color, #0075f8);
+      color: #fff;
+    }
+
+    .stage-zoom-controls .zoom-badge {
+      font-size: 11px;
+      color: #93c5fd;
+      font-family: var(--monospace-font, monospace);
+      font-weight: 700;
+      min-width: 42px;
+      text-align: center;
+      padding-left: 4px;
+    }
+
+    .stage-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted-text-color);
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .media-asset-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip-badge {
+      background: var(--subnav-menu-background-color);
+      border: 1px solid var(--default-border-color);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--monospace-font);
+      color: var(--muted-text-color);
+    }
+
+    /* Resizable Divider */
+    .upload-divider {
+      width: 8px;
+      cursor: col-resize;
+      background: linear-gradient(currentColor, currentColor) no-repeat center/1px 100%;
+      color: var(--divider-border-color);
+      transition: color 0.15s;
+    }
+    .upload-divider:hover, .upload-divider.dragging {
+      color: var(--divider-border-hover-color);
+    }
+
+    /* Right Container */
+    .upload-edit-container {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 6px;
+      padding: 16px 20px;
+      height: fit-content;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    }
+
+    /* -------------------------------------------------------------
+       TabPanelComponent (.tab-panel-component)
+       ------------------------------------------------------------- */
+    .tab-list {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--default-border-color);
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+      white-space: nowrap;
+    }
+
+    .tab {
+      color: var(--muted-text-color);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding-bottom: 8px;
+      margin-bottom: -9px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.12s;
+    }
+    .tab:hover {
+      color: var(--link-hover-color);
+      text-decoration: none;
+    }
+    .tab.active-tab {
+      color: var(--header-color);
+      border-bottom-color: var(--link-color);
+    }
+
+    .tab-spacer {
+      flex: 1;
+    }
+
+    .tab-panels > .tab-panel {
+      display: none;
+    }
+    .tab-panels > .tab-panel.active-tab {
+      display: block;
+    }
+
+    /* Danbooru Radio Button Group (.radio-button-group) */
+    .radio-button-group {
+      white-space: nowrap;
+    }
+    .radio-button-group input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .radio-button-group .radio label {
+      display: inline-block;
+      margin: 0;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--form-input-border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      background: var(--form-input-background);
+      color: var(--muted-text-color);
+      transition: all 0.12s;
+    }
+    .radio-button-group .radio label:hover {
+      color: var(--inverse-text-color);
+      background-color: var(--link-hover-color);
+      border-color: var(--link-hover-color);
+    }
+    .radio-button-group input[type="radio"]:checked ~ label {
+      color: var(--inverse-text-color) !important;
+      background-color: var(--link-color) !important;
+      border-color: var(--link-color) !important;
+      font-weight: 700;
+    }
+    .radio-button-group .radio:not(:last-of-type) label {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .radio-button-group .radio:not(:first-of-type) label {
+      margin-left: -1px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+    /* Danbooru Toggle Switch (.toggle-switch) */
+    input.toggle-switch {
+      appearance: none;
+      background-color: var(--grey-5);
+      border-color: transparent;
+      border-radius: 1rem;
+      border-width: 0.125rem;
+      height: 18px;
+      min-width: 32px;
+      transition: background-color 0.15s;
+      vertical-align: middle;
+      cursor: pointer;
+      padding: 0;
+      position: relative;
+    }
+    input.toggle-switch:checked {
+      background-color: var(--blue-5);
+    }
+    input.toggle-switch::before {
+      display: block;
+      content: "";
+      background-color: #ffffff;
+      height: 14px;
+      width: 14px;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.15s;
+    }
+    input.toggle-switch:checked::before {
+      transform: translateX(14px);
+    }
+
+    /* -------------------------------------------------------------
+       Danbooru Autocomplete Popover (.ui-autocomplete)
+       ------------------------------------------------------------- */
+    .ui-autocomplete {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--card-background-color);
+      border: 1px solid var(--link-color);
+      border-radius: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      list-style: none;
+    }
+
+    .ui-menu-item {
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      line-height: 1.2;
+    }
+    .ui-menu-item:hover, .ui-menu-item.active {
+      background: rgba(0, 117, 248, 0.15);
+    }
+
+    .tag-name-text {
+      font-family: var(--monospace-font);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .tag-count-text {
+      font-size: 11px;
+      color: var(--muted-text-color);
+      font-family: var(--monospace-font);
+    }
+
+    /* Tag Types */
+    .tag-type-0, .cat-general { color: var(--general-tag-color) !important; }
+    .tag-type-1, .cat-artist { color: var(--artist-tag-color) !important; }
+    .tag-type-3, .cat-copyright { color: var(--copyright-tag-color) !important; }
+    .tag-type-4, .cat-character { color: var(--character-tag-color) !important; }
+    .tag-type-5, .cat-meta { color: var(--meta-tag-color) !important; }
+
+    /* Discord preview card inside dock */
+    .discord-card {
+      background-color: var(--body-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+
+    .discord-preview-pre {
+      background-color: #2b2d31;
+      color: #dcddde;
+      padding: 8px 10px;
+      border-left: 3px solid #5865f2;
+      border-radius: 4px;
+      font-family: var(--monospace-font);
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 90px;
+      overflow-y: auto;
+      margin-top: 6px;
+    }
+
+    /* -------------------------------------------------------------
+       VIEW 3: Danbooru Posts Gallery View (c-posts a-index)
+       ------------------------------------------------------------- */
+    #view-posts {
+      display: none;
+      width: 100%;
+    }
+
+    .posts-layout-grid {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .posts-layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    aside#sidebar section {
+      margin-bottom: 20px;
+    }
+    aside#sidebar h2 {
+      font-size: 14px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--default-border-color);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+
+    .search-tag-list {
+      list-style: none;
+      font-size: 12px;
+    }
+    .search-tag-list li {
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.3;
+    }
+    .search-tag-list .wiki-link {
+      color: var(--muted-text-color);
+      font-size: 11px;
+    }
+    .search-tag-list .post-count {
+      margin-left: auto;
+      color: var(--muted-text-color);
+      font-size: 11px;
+      font-family: var(--monospace-font);
+    }
+
+    /* Thumbnail Gallery */
+    .posts-gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--default-border-color);
+      padding-bottom: 8px;
+    }
+
+    .post-gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .post-preview-card {
+      background: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .post-preview-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .post-thumb-box {
+      width: 100%;
+      height: 180px;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .post-thumb-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: cover;
+    }
+
+    .post-preview-info {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    /* -------------------------------------------------------------
+       VIEW 4: Danbooru Striped Table (c-tags a-index)
+       ------------------------------------------------------------- */
+    #view-tags {
+      display: none;
+      width: 100%;
+    }
+
+    table.striped {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    table.striped th, table.striped td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--table-row-border-color);
+      text-align: left;
+    }
+    table.striped thead tr {
+      border-bottom: 2px solid var(--table-header-border-color);
+    }
+    table.striped tbody tr:nth-child(even) {
+      background: var(--table-even-row-background);
+    }
+    table.striped tbody tr:hover {
+      background: var(--table-row-hover-background);
+    }
+
+    /* -------------------------------------------------------------
+       Modal Dialog (.modal-backdrop & .modal-dialog)
+       ------------------------------------------------------------- */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(2px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-dialog {
+      background: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 860px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+    }
+
+    .modal-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--default-border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--subnav-menu-background-color);
+      border-radius: 8px 8px 0 0;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--default-border-color);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: var(--subnav-menu-background-color);
+      border-radius: 0 0 8px 8px;
+    }
+
+    /* Dropdown popup menu for docking */
+    .popup-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 4px;
+      padding: 4px 0;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+    .popup-item {
+      display: block;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: var(--text-color);
+      cursor: pointer;
+    }
+    .popup-item:hover {
+      background: var(--link-color);
+      color: #fff;
+      text-decoration: none;
+    }
+
+    /* Footer */
+    #page-footer {
+      margin-top: auto;
+      padding: 18px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted-text-color);
+      border-top: 1px solid var(--default-border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Toast notification */
+    .toast-popup {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 10px 18px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast-success { background: #065f46; color: #a7f3d0; border: 1px solid #10b981; }
+    .toast-error { background: #991b1b; color: #fecaca; border: 1px solid #ef4444; }
+    /* =============================================================
+       Multi-Image Post Gallery Styles (Danbooru Exact Layout)
+       ============================================================= */
+    .gallery-source-card {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .gallery-source-header {
+      color: var(--link-color);
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .gallery-meta-grid {
+      display: grid;
+      grid-template-columns: 85px 1fr;
+      gap: 6px 14px;
+      align-items: baseline;
+    }
+
+    .gallery-meta-label {
+      color: var(--muted-text-color);
+      font-weight: 600;
+    }
+
+    .gallery-tag-chip {
+      background: rgba(0, 117, 248, 0.12);
+      border: 1px solid rgba(0, 117, 248, 0.25);
+      color: var(--link-color);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-block;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .gallery-tag-chip:hover {
+      background: var(--button-primary-background-color, #0075f8);
+      color: #fff;
+    }
+
+    .gallery-filter-tabs-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--default-border-color);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+
+    .gallery-filter-tab {
+      color: var(--muted-text-color);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding-bottom: 8px;
+      cursor: pointer;
+      position: relative;
+    }
+    .gallery-filter-tab.active {
+      color: var(--link-color);
+      border-bottom: 2px solid var(--link-color);
+    }
+    .gallery-filter-tab:hover {
+      color: var(--text-color);
+    }
+
+    .gallery-grid-track {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-start;
+      min-height: 180px;
+    }
+
+    .gallery-card-item {
+      width: 132px;
+      background: var(--card-background-color);
+      border: 1px solid var(--default-border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+    .gallery-card-item:hover {
+      border-color: var(--link-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      transform: translateY(-2px);
+    }
+    .gallery-card-item.is-posted {
+      border-color: #10b981;
+    }
+
+    .gallery-card-thumb {
+      width: 132px;
+      height: 132px;
+      background: #000;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-card-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.2s ease;
+    }
+    .gallery-card-thumb:hover img {
+      transform: scale(1.06);
+    }
+
+    .gallery-card-footer {
+      padding: 8px 6px;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      box-sizing: border-box;
+      border-top: 1px solid var(--default-border-color);
+      background: var(--card-background-color);
+    }
+
+    .gallery-card-post-link {
+      color: var(--link-color);
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+      display: block;
+    }
+    .gallery-card-post-link:hover {
+      text-decoration: underline;
+    }
+
+    .gallery-card-posted-badge {
+      color: #10b981;
+      font-weight: 700;
+      font-size: 11px;
+      display: block;
+    }
+  </style>
+</head>
+<body class="theme-dark" data-current-user-theme="dark">
+
+  <!-- =============================================================
+       Global Navigation (#top & #nav)
+       ============================================================= -->
+  <header id="top">
+    <nav id="nav">
+      <div id="main-menu">
+        <a class="main-nav-link" onclick="navigateTo('upload')">My Account</a>
+        <a class="main-nav-link" id="main-nav-posts" onclick="navigateTo('posts')">Posts</a>
+        <a class="main-nav-link active" id="main-nav-upload" onclick="navigateTo('upload')">Upload</a>
+        <a class="main-nav-link" id="main-nav-tags" onclick="navigateTo('tags')">Tags</a>
+        <a class="main-nav-link" id="main-nav-history" onclick="navigateTo('history')">History</a>
+        <a class="main-nav-link" onclick="openSettingsModal()">Settings</a>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+          <span class="header-status-pill" onclick="openSettingsModal()" title="Click to configure tags & webhooks">
+            File: <strong id="header-tag-file">{{ loaded_file }}</strong> &bull; <span id="header-tag-count">{{ tag_count }}</span> tags
+          </span>
+          <button type="button" class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Switch Light / Dark Theme">
+            🌙 Dark
+          </button>
+        </div>
+      </div>
+
+      <div id="subnav-menu">
+        <a class="subnav-link active" id="subnav-upload" onclick="navigateTo('upload')">Upload</a>
+        <span class="subnav-divider">|</span>
+        <a class="subnav-link" id="subnav-posts" onclick="navigateTo('posts')">All Posts</a>
+        <a class="subnav-link" id="subnav-history" onclick="navigateTo('history')">Session History</a>
+        <a class="subnav-link" onclick="openSauceNAO()">Reverse Image Search</a>
+        <a class="subnav-link" onclick="switchDockTab('source'); navigateTo('upload');">Source Info</a>
+        <span class="subnav-divider">|</span>
+        <a class="subnav-link subnav-configure-btn" id="subnav-configure" onclick="toggleSettingsModal()">
+          ⚙️ Configure (settings.json)
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- =============================================================
+       Main Content Container (#page)
+       ============================================================= -->
+  <main id="page">
+
+    <!-- =============================================================
+         VIEW 1: FileUploadComponent (app/components/file_upload_component)
+         ============================================================= -->
+    <section id="view-upload-prompt">
+      <h1 class="page-heading-title">Upload</h1>
+
+      <div class="file-upload-component card">
+        <div class="bg-dropzone">
+          <label id="source-label" class="block text-center mb-2" style="font-size: 14px; font-weight: 700;">Paste URL here</label>
+          <div style="max-width: 660px; margin: 0 auto; width: 100%;">
+            <input type="text" id="prompt-url-input" class="form-input" style="width: 100%; box-sizing: border-box; text-align: center; font-size: 13px; padding: 10px 16px; border-radius: 4px;" placeholder="Paste a pixiv link, tweet, etc." autofocus>
+          </div>
+          <span class="hint fineprint text-center block mt-2">
+            <a href="javascript:void(0)" onclick="showSupportedSites()">See here</a> for a list of supported sites (Twitter, Pixiv, direct image links).
+          </span>
+        </div>
+
+        <div class="dropzone-container" id="prompt-dropzone">
+          <p class="text-center mb-2" style="color: var(--muted-text-color); font-size: 13px;">&mdash; or &mdash;</p>
+          <div class="dropzone-hint">
+            <div class="dropzone-hint-title">Choose file or drag image here</div>
+            <div class="fineprint">Max size: 100 MB. (Or paste image / URL with <kbd style="background:var(--subnav-menu-background-color); padding:2px 6px; border-radius:3px; border:1px solid var(--default-border-color);">Ctrl + V</kbd>)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hidden file input -->
+    <input type="file" id="prompt-file-input" accept="image/*" style="display: none;">
+
+    <!-- =============================================================
+         VIEW 1.5: Multi-Image Post Gallery (#view-multi-gallery)
+         ============================================================= -->
+    <section id="view-multi-gallery" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h1 class="page-heading-title" style="margin: 0;">Upload</h1>
+        <button type="button" class="button-outline-primary button-sm" onclick="resetToUploadPrompt()">✕ Change URL</button>
+      </div>
+
+      <!-- Fetch source data card (Exact Danbooru match) -->
+      <div class="gallery-source-card">
+        <div class="gallery-source-header">Fetch source data</div>
+        <div class="gallery-meta-grid">
+          <span class="gallery-meta-label">Artist</span>
+          <div>
+            <strong id="gallery-artist-name" style="color: var(--link-color);"></strong>
+            <span style="color: var(--muted-text-color); font-size: 11px; margin-left: 6px;">(Create new artist)</span>
+          </div>
+
+          <span class="gallery-meta-label">Tags</span>
+          <div id="gallery-tags-list" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+
+          <span class="gallery-meta-label">Published</span>
+          <div id="gallery-published-date" style="color: var(--text-color);"></div>
+        </div>
+      </div>
+
+      <!-- Filter tabs bar (All | Posted | Unposted) -->
+      <div class="gallery-filter-tabs-bar">
+        <div style="display: flex; gap: 18px;">
+          <a class="gallery-filter-tab active" id="filter-tab-all" onclick="filterGallery('all')">All (<span id="count-all">0</span>)</a>
+          <a class="gallery-filter-tab" id="filter-tab-posted" onclick="filterGallery('posted')">Posted (<span id="count-posted">0</span>)</a>
+          <a class="gallery-filter-tab" id="filter-tab-unposted" onclick="filterGallery('unposted')">Unposted (<span id="count-unposted">0</span>)</a>
+        </div>
+        <div style="font-size: 12px; color: var(--muted-text-color); display: flex; align-items: center; gap: 12px;">
+          <span id="gallery-total-badge"></span>
+          <span style="cursor: default;" title="Standard Danbooru thumbnail size">📐 Size ▾</span>
+        </div>
+      </div>
+
+      <!-- Thumbnails Grid -->
+      <div id="gallery-grid" class="gallery-grid-track"></div>
+
+      <!-- Danbooru Pagination indicator -->
+      <div style="display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 28px; font-size: 14px; color: var(--muted-text-color); user-select: none;">
+        <span>&lang;</span>
+        <span style="font-weight: 700; color: var(--link-color);">1</span>
+        <span>&rang;</span>
+      </div>
+    </section>
+
+    <!-- =============================================================
+         VIEW 2: UploadPostComponent (app/components/upload_post_component)
+         ============================================================= -->
+    <section id="view-tagging-dock">
+      <div class="upload-container" data-dock="right" id="dock-upload-container">
+
+        <!-- Left Column: Media Stage & Tools -->
+        <div class="upload-image-container">
+          <div class="media-asset-stage-box" id="dock-image-stage">
+            
+            <!-- Floating Zoom Toolbar -->
+            <div class="stage-zoom-controls" id="stage-zoom-controls" style="display: none;">
+              <button type="button" class="zoom-btn" onclick="zoomStep(-0.25)" title="Zoom Out (or scroll down)">🔍−</button>
+              <button type="button" class="zoom-btn" onclick="resetZoomToFit()" title="Fit to frame">⛶ Fit</button>
+              <button type="button" class="zoom-btn" onclick="setZoom100()" title="Original size (1:1)">1:1</button>
+              <button type="button" class="zoom-btn" onclick="zoomStep(0.25)" title="Zoom In (or scroll up)">🔍+</button>
+              <button type="button" class="zoom-btn" onclick="rotateImage()" title="Rotate image 90°">🔄</button>
+              <span id="zoom-level-badge" class="zoom-badge">100%</span>
+            </div>
+
+            <!-- Multi-page / multi-photo indicator -->
+            <div id="multi-page-pill" style="display: none; position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-family: var(--monospace-font); border: 1px solid rgba(255,255,255,0.2); z-index: 20;">
+              <button type="button" onclick="changePixivPage(-1)" style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold; padding: 0 4px;" title="Previous image">&lt;</button>
+              <span id="multi-page-text" style="margin: 0 4px;">1 / 1</span>
+              <button type="button" onclick="changePixivPage(1)" style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold; padding: 0 4px;" title="Next image">&gt;</button>
+              <span style="color: rgba(255,255,255,0.3); margin: 0 2px;">|</span>
+              <button type="button" onclick="showMultiGallery()" style="background:none; border:none; color:#93c5fd; cursor:pointer; font-size: 11px; padding: 0 4px;" title="View album gallery">☷ Album</button>
+            </div>
+
+            <!-- Transform wrapper for smooth Zoom & Pan -->
+            <div id="dock-img-wrapper" class="img-transform-wrapper">
+              <img id="dock-img-preview" src="" alt="Uploaded image" style="display: none;" draggable="false">
+            </div>
+            
+            <div id="dock-stage-placeholder" class="stage-placeholder">
+              <span style="font-size: 42px; margin-bottom: 10px;">🖼️</span>
+              <h2 id="dock-placeholder-title" style="margin-bottom: 6px;">Artwork Ready for Tagging</h2>
+              <p id="dock-placeholder-desc" class="fineprint" style="max-width: 360px; line-height: 1.6; margin-bottom: 14px;">
+                Source link loaded. You can drag and drop an image file here or paste (<kbd>Ctrl+V</kbd>) to preview.
+              </p>
+              <button type="button" class="button-outline-primary button-sm" onclick="promptFileInput.click()">📂 Select image file from disk</button>
+            </div>
+          </div>
+
+          <!-- Bottom Toolbar (File metadata & quick search tools) -->
+          <div class="media-asset-footer">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="button-outline-primary button-xs" id="btn-back-to-gallery" onclick="showMultiGallery()" style="display: none;">☷ Album (<span id="back-gallery-count"></span>)</button>
+              <span class="chip-badge" id="dock-file-meta">
+                <span id="dock-file-dims">Ready</span> &bull; <span id="dock-file-size">Source URL</span> (<span id="dock-file-ext">.link</span>)
+              </span>
+              <button type="button" class="button-outline-danger button-xs" onclick="resetToUploadPrompt()">🔄 Change Image</button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="button-outline-primary button-xs" onclick="openSauceNAO()">🔍 SauceNAO</button>
+              <button type="button" class="button-outline-primary button-xs" onclick="openAscii2D()">🔍 Ascii2D</button>
+              <button type="button" class="button-outline-primary button-xs" onclick="openGoogleLens()">🔍 Google</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resizable Col Divider (Exact Danbooru component) -->
+        <div class="upload-divider cursor-col-resize" id="upload-col-divider" title="Drag to resize tagging dock"></div>
+
+        <!-- Right Column: Tagging & Discord Dock -->
+        <div class="upload-edit-container">
+          <div class="tab-panel-component horizontal-tab-panel">
+            
+            <div class="tab-list">
+              <a class="tab active-tab" data-docktab="tags" onclick="switchDockTab('tags')">Tags</a>
+              <a class="tab" data-docktab="source" onclick="switchDockTab('source')">Source</a>
+              <a class="tab" data-docktab="discord" onclick="switchDockTab('discord')">Discord</a>
+              <span class="tab-spacer"></span>
+
+              <!-- Dock layout selector -->
+              <div style="position: relative;">
+                <a class="tab" style="color: var(--muted-text-color);" onclick="toggleDockMenu(event)" title="Dock Layout">
+                  ⊞ Dock ▾
+                </a>
+                <div id="dock-popup-menu" class="popup-menu" style="display: none;">
+                  <a class="popup-item" onclick="setDockPosition('right')">Dock to Right</a>
+                  <a class="popup-item" onclick="setDockPosition('bottom')">Dock to Bottom</a>
+                  <a class="popup-item" onclick="setDockPosition('left')">Dock to Left</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-panels">
+
+              <!-- TAB 1: TAGS PANEL -->
+              <div class="tab-panel active-tab" id="docktab-tags">
+                <form id="upload-form" onsubmit="event.preventDefault(); submitPost();">
+                  
+                  <!-- Rating Buttons Group (Exact Danbooru radio-button-group) -->
+                  <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 6px;">
+                      Rating <span class="fineprint" style="cursor: pointer;" title="General (s): safe for work&#10;Sensitive: mild ecchi / suggestive&#10;Questionable (q): ecchi / NSFW&#10;Explicit (e): 18+ adult / hentai">?</span>:
+                    </label>
+                    <div class="radio-button-group">
+                      <span class="radio">
+                        <input type="radio" name="post_rating" id="rating_explicit" value="explicit">
+                        <label for="rating_explicit">Explicit</label>
+                      </span>
+                      <span class="radio">
+                        <input type="radio" name="post_rating" id="rating_questionable" value="questionable">
+                        <label for="rating_questionable">Questionable</label>
+                      </span>
+                      <span class="radio">
+                        <input type="radio" name="post_rating" id="rating_sensitive" value="sensitive">
+                        <label for="rating_sensitive">Sensitive</label>
+                      </span>
+                      <span class="radio">
+                        <input type="radio" name="post_rating" id="rating_general" value="general" checked>
+                        <label for="rating_general">General</label>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Tags Textarea + Live Counter -->
+                  <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <label for="tags-dock-input" style="font-size: 13px; font-weight: 700;">Tags</label>
+                      <span class="fineprint" id="dock-tags-count">0 tags</span>
+                    </div>
+
+                    <div style="position: relative;">
+                      <textarea id="tags-dock-input" class="form-textarea" style="width: 100%; height: 160px; font-family: var(--monospace-font); line-height: 1.5; resize: vertical;" placeholder="Type tags here (e.g. 1girl solo cat_ears)..."></textarea>
+                      <!-- Autocomplete Popover -->
+                      <ul class="ui-autocomplete" id="dock-autocomplete-list" style="display: none;"></ul>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                      <span class="fineprint">Ctrl+Enter to post &bull; Tab/Enter to autocomplete</span>
+                      <span class="fineprint" id="tag-char-length">0 chars</span>
+                    </div>
+                  </div>
+
+                  <!-- Post Button & Toggle Option -->
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+                    <button type="button" class="button-primary" id="btn-dock-post" onclick="submitPost()">Post</button>
+                    
+                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; user-select: none;">
+                      <input type="checkbox" class="toggle-switch" id="switch-rating-tag" checked onchange="updateDiscordPreview()">
+                      <span>Add rating tag (e.g. <code>rating:general</code>)</span>
+                    </label>
+
+                    <span class="fineprint desktop-only" style="margin-left: auto;">
+                      Read the <a href="javascript:void(0)" onclick="navigateTo('help')">upload rules</a>.
+                    </span>
+                  </div>
+
+                  <!-- Source URL Quick Input -->
+                  <div style="margin-bottom: 12px;">
+                    <label for="dock-source-url-input" style="font-size: 11px; font-weight: 700; display: block; margin-bottom: 4px;">Source URL:</label>
+                    <input type="text" id="dock-source-url-input" class="form-input" style="width: 100%; font-size: 12px;" placeholder="https://x.com/artist/status/... or Pixiv link">
+                  </div>
+
+                  <!-- Discord Webhook Integration Box -->
+                  <div class="discord-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <label for="dock-webhook-select" style="font-size: 11px; font-weight: 700;">Discord Webhook Destination:</label>
+                      <a href="javascript:void(0)" onclick="openSettingsModal()" style="font-size: 11px; color: var(--link-color);">⚙️ Settings</a>
+                    </div>
+                    <select id="dock-webhook-select" class="form-select" style="width: 100%; font-size: 12px; margin-bottom: 6px;"></select>
+                    
+                    <div class="fineprint" style="margin-bottom: 2px;">Discord message payload preview (Pure Text format):</div>
+                    <pre class="discord-preview-pre" id="dock-discord-preview"></pre>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;" class="fineprint">
+                      <span>✓ Pure text &bull; Zero local disk</span>
+                      <span id="dock-char-count">0 / 2000 chars</span>
+                    </div>
+                  </div>
+
+                </form>
+              </div>
+
+              <!-- TAB 2: SOURCE PANEL -->
+              <div class="tab-panel" id="docktab-source">
+                <div style="margin-bottom: 16px;">
+                  <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 6px;">Full Source URL:</label>
+                  <input type="text" id="dock-tab-source-input" class="form-input" style="width: 100%;" placeholder="https://x.com/artist/status/...">
+                  <p class="fineprint" style="margin-top: 8px; line-height: 1.6;">
+                    This URL will be formatted as Danbooru upload URL: <br>
+                    <code>https://danbooru.donmai.us/uploads/new?url=[source_url]</code>
+                  </p>
+                </div>
+              </div>
+
+              <!-- TAB 3: DISCORD PANEL -->
+              <div class="tab-panel" id="docktab-discord">
+                <div style="font-size: 12px; line-height: 1.8;">
+                  <h3 style="font-size: 14px; margin-bottom: 8px;">Discord Webhook Configuration</h3>
+                  <p>&bull; <strong>Pure Text Mode:</strong> Does not upload raw image files directly to Discord.</p>
+                  <p>&bull; <strong>Line 1:</strong> <code>https://danbooru.donmai.us/uploads/new?url=[image_link]</code></p>
+                  <p>&bull; <strong>Line 2:</strong> <code>` taga tagb tagc ... `</code></p>
+                  <p style="margin-top: 10px;">
+                    <button type="button" class="button-outline-primary button-sm" onclick="openSettingsModal()">⚙️ Open Webhook Settings</button>
+                  </p>
+                </div>
+              </div>
+
+
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =============================================================
+         VIEW 3: Danbooru Posts Gallery (c-posts a-index)
+         ============================================================= -->
+    <section id="view-posts">
+      <div class="posts-layout-grid">
+        
+        <!-- Danbooru Left Sidebar -->
+        <aside id="sidebar">
+          <section id="search-box">
+            <h2>Search</h2>
+            <form onsubmit="event.preventDefault(); filterPostsHistory();" style="display: flex; gap: 6px;">
+              <input type="text" id="posts-search-query" class="form-input" style="width: 100%; font-size: 12px;" placeholder="Search tags...">
+              <button type="submit" class="button-primary button-xs">Go</button>
+            </form>
+          </section>
+
+          <section id="tag-box">
+            <h2>Top Tags</h2>
+            <ul class="search-tag-list" id="sidebar-top-tags">
+              <li class="tag-type-0"><a class="wiki-link" href="#">?</a> <a href="#" class="search-tag">solo</a> <span class="post-count">3.8M</span></li>
+              <li class="tag-type-0"><a class="wiki-link" href="#">?</a> <a href="#" class="search-tag">1girl</a> <span class="post-count">3.5M</span></li>
+              <li class="tag-type-0"><a class="wiki-link" href="#">?</a> <a href="#" class="search-tag">long_hair</a> <span class="post-count">1.9M</span></li>
+              <li class="tag-type-4"><a class="wiki-link" href="#">?</a> <a href="#" class="search-tag">hatsune_miku</a> <span class="post-count">120k</span></li>
+              <li class="tag-type-3"><a class="wiki-link" href="#">?</a> <a href="#" class="search-tag">genshin_impact</a> <span class="post-count">95k</span></li>
+            </ul>
+          </section>
+
+          <section id="options-box">
+            <h2>Options</h2>
+            <ul style="list-style: none; font-size: 12px; line-height: 1.8;">
+              <li><a href="javascript:void(0)" onclick="navigateTo('upload')">+ New Upload</a></li>
+              <li><a href="javascript:void(0)" onclick="openSauceNAO()">Reverse Image Search</a></li>
+              <li><a href="javascript:void(0)" onclick="openSettingsModal()">Configure Settings</a></li>
+            </ul>
+          </section>
+        </aside>
+
+        <!-- Main Gallery Feed -->
+        <div id="posts-content">
+          <div class="posts-gallery-header">
+            <h2>Posts History (<span id="posts-count-display">0</span>)</h2>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="button-primary button-sm" onclick="navigateTo('upload')">+ New Upload</button>
+              <button type="button" class="button-outline-primary button-sm" onclick="loadSessionPosts()">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <div class="post-gallery-grid" id="posts-history-grid"></div>
+
+          <div id="no-posts-text" class="text-center" style="padding: 50px 20px; color: var(--muted-text-color);">
+            No posts submitted in this session yet. Click <strong>+ New Upload</strong> to begin!
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =============================================================
+         VIEW 4: Danbooru Tags Database Hub (c-tags a-index)
+         ============================================================= -->
+    <section id="view-tags">
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--default-border-color); padding-bottom: 10px;">
+          <h2>Danbooru Tags Database</h2>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="fineprint">Loaded in RAM</span>
+            <button type="button" class="button-outline-primary button-xs" onclick="navigateTo('upload')">✕ Back to Upload</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+          <input type="text" id="browser-q" class="form-input" style="flex: 2; min-width: 220px;" placeholder="Search tags (e.g. 1girl, miku, solo)...">
+          <select id="browser-cat" class="form-select" style="flex: 1; min-width: 140px;">
+            <option value="all">All Categories</option>
+            <option value="artist">Artist (Red)</option>
+            <option value="copyright">Copyright (Purple)</option>
+            <option value="character">Character (Green)</option>
+            <option value="general">General (Blue)</option>
+            <option value="meta">Meta (Orange)</option>
+          </select>
+          <button type="button" class="button-primary" onclick="runTagSearch()">Search</button>
+        </div>
+
+        <table class="striped">
+          <thead>
+            <tr>
+              <th style="width: 40%;">Tag Name</th>
+              <th style="width: 20%;">Category</th>
+              <th style="width: 20%;">Posts Count</th>
+              <th style="width: 20%;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="tags-browser-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+
+
+  </main>
+
+  <!-- =============================================================
+       Modal Dialog: Configure (settings.json & Tag Files)
+       ============================================================= -->
+  <div id="modal-settings" class="modal-backdrop" onclick="onModalBackdropClick(event)">
+    <div class="modal-dialog">
+      
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">⚙️</span>
+          <span style="font-size: 15px; font-weight: 700;">Configure (settings.json)</span>
+        </div>
+        <button type="button" class="button-outline-danger button-xs" onclick="closeSettingsModal()" title="Close dialog (Esc)">
+          ✕ Close (Esc)
+        </button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Section 1: Tag Data File Management -->
+        <div class="card" style="margin-bottom: 16px; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--default-border-color); padding-bottom: 6px;">
+            <strong style="font-size: 13px;">1. Tag Data File (Excel .xlsx / .csv)</strong>
+            <span style="font-size: 11px; color: var(--green-4); font-weight: bold;" id="settings-tag-status">Active</span>
+          </div>
+
+          <p class="fineprint" style="margin-bottom: 10px;">
+            Tags are loaded directly into RAM, independent of external tools. You can load a new Excel (<code>.xlsx</code>) or <code>.csv</code> file at any time.
+          </p>
+
+          <div style="background: var(--body-background-color); border: 1px solid var(--default-border-color); border-radius: 4px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--link-color);" id="current-file-label">tags.csv</div>
+              <div class="fineprint" id="current-source-label">Source: ./data/tags.csv</div>
+            </div>
+            <div>
+              <input type="file" id="settings-tag-uploader" accept=".csv,.xlsx,.xls,.tsv" style="display: none;">
+              <button type="button" class="button-primary button-sm" onclick="document.getElementById('settings-tag-uploader').click()">
+                📂 Load Excel / CSV from disk
+              </button>
+            </div>
+          </div>
+
+          <div class="fineprint" style="font-weight: 700; margin-bottom: 6px;">Available files in <code>./data/</code>:</div>
+          <table class="striped" style="margin-bottom: 4px;">
+            <thead>
+              <tr>
+                <th>File Name</th>
+                <th>Size</th>
+                <th>Modified</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="data-files-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Section 2: Discord Webhooks -->
+        <div class="card" style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--default-border-color); padding-bottom: 6px;">
+            <strong style="font-size: 13px;">2. Discord Webhooks (settings.json)</strong>
+            <button type="button" class="button-primary button-xs" onclick="addNewWebhook()">+ Add Webhook</button>
+          </div>
+
+          <table class="striped" style="margin-bottom: 6px;">
+            <thead>
+              <tr>
+                <th style="width: 28%;">Channel Name</th>
+                <th style="width: 48%;">Discord Webhook URL</th>
+                <th style="width: 24%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="webhooks-tbody"></tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="button-primary" onclick="saveSettings()">💾 Save to settings.json</button>
+        <button type="button" class="button-outline-primary button-sm" onclick="loadSettings()">🔄 Reload</button>
+        <button type="button" class="button-outline-danger button-sm" onclick="closeSettingsModal()" style="margin-left: auto;">
+          ✕ Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+
+  <!-- Toast Notification -->
+  <div class="toast-popup" id="toast-popup"></div>
+
+  <!-- =============================================================
+       Application Logic (JavaScript)
+       ============================================================= -->
+  <script>
+    // Safe Settings Initialization (Supports both Flask Jinja & standalone browser)
+    let currentSettings;
+    try {
+      currentSettings = {{ settings | tojson }};
+    } catch (e) {
+      currentSettings = {
+        webhooks: [{ name: "Default Discord Channel", url: "" }],
+        active_webhook_name: "Default Discord Channel",
+        default_rating: "general",
+        auto_rating_tag: true
+      };
+    }
+
+    let currentFile = null;
+    let selectedRating = currentSettings.default_rating || "general";
+    let addRatingTag = currentSettings.auto_rating_tag !== false;
+    let activeAutocompleteIndex = -1;
+    let currentSuggestions = [];
+    let currentDockPosition = "right";
+    let multiPages = [];
+    let currentMultiIndex = 0;
+    let currentGalleryFilter = "all";
+    let sourceMetadata = { artist: "", tags: [], published: "" };
+
+    // DOM Elements
+    const viewUploadPrompt = document.getElementById("view-upload-prompt");
+    const viewMultiGallery = document.getElementById("view-multi-gallery");
+    const viewTaggingDock = document.getElementById("view-tagging-dock");
+    const viewPosts = document.getElementById("view-posts");
+    const viewTags = document.getElementById("view-tags");
+    const viewHelp = document.getElementById("view-help");
+    const promptDropzone = document.getElementById("prompt-dropzone");
+    const promptFileInput = document.getElementById("prompt-file-input");
+    const promptUrlInput = document.getElementById("prompt-url-input");
+    const dockImgPreview = document.getElementById("dock-img-preview");
+    const dockStagePlaceholder = document.getElementById("dock-stage-placeholder");
+    const dockPlaceholderTitle = document.getElementById("dock-placeholder-title");
+    const dockPlaceholderDesc = document.getElementById("dock-placeholder-desc");
+    const dockFileSize = document.getElementById("dock-file-size");
+    const dockFileExt = document.getElementById("dock-file-ext");
+    const dockFileDims = document.getElementById("dock-file-dims");
+    const tagsDockInput = document.getElementById("tags-dock-input");
+    const dockTagsCount = document.getElementById("dock-tags-count");
+    const tagCharLength = document.getElementById("tag-char-length");
+    const dockAutocompleteList = document.getElementById("dock-autocomplete-list");
+    const dockWebhookSelect = document.getElementById("dock-webhook-select");
+    const dockDiscordPreview = document.getElementById("dock-discord-preview");
+    const dockCharCount = document.getElementById("dock-char-count");
+    const btnDockPost = document.getElementById("btn-dock-post");
+    const dockSourceUrlInput = document.getElementById("dock-source-url-input");
+    const dockTabSourceInput = document.getElementById("dock-tab-source-input");
+    const toastPopup = document.getElementById("toast-popup");
+    const modalSettings = document.getElementById("modal-settings");
+    const subnavConfigure = document.getElementById("subnav-configure");
+    const dockUploadContainer = document.getElementById("dock-upload-container");
+
+    // Toast Popup
+    function showToast(msg, isError = false) {
+      toastPopup.textContent = msg;
+      toastPopup.className = `toast-popup ${isError ? 'toast-error' : 'toast-success'}`;
+      toastPopup.style.display = "flex";
+      setTimeout(() => { toastPopup.style.display = "none"; }, 3500);
+    }
+
+    // -------------------------------------------------------------
+    // Theme Switcher (Dark / Light Theme)
+    // -------------------------------------------------------------
+    function toggleTheme() {
+      const isDark = document.body.classList.contains("theme-dark");
+      if (isDark) {
+        document.body.classList.remove("theme-dark");
+        document.body.removeAttribute("data-current-user-theme");
+        document.getElementById("theme-toggle").textContent = "☀️ Light";
+        localStorage.setItem("danbooru_theme", "light");
+      } else {
+        document.body.classList.add("theme-dark");
+        document.body.setAttribute("data-current-user-theme", "dark");
+        document.getElementById("theme-toggle").textContent = "🌙 Dark";
+        localStorage.setItem("danbooru_theme", "dark");
+      }
+    }
+
+    // Restore saved theme
+    (function initTheme() {
+      const savedTheme = localStorage.getItem("danbooru_theme");
+      if (savedTheme === "light") {
+        document.body.classList.remove("theme-dark");
+        document.body.removeAttribute("data-current-user-theme");
+        document.getElementById("theme-toggle").textContent = "☀️ Light";
+      }
+    })();
+
+    // -------------------------------------------------------------
+    // Dock Layout Switching (Right, Bottom, Left)
+    // -------------------------------------------------------------
+    function setDockPosition(pos) {
+      currentDockPosition = pos;
+      dockUploadContainer.setAttribute("data-dock", pos);
+      document.getElementById("dock-popup-menu").style.display = "none";
+    }
+
+    function toggleDockMenu(e) {
+      e.stopPropagation();
+      const menu = document.getElementById("dock-popup-menu");
+      menu.style.display = menu.style.display === "block" ? "none" : "block";
+    }
+
+    document.addEventListener("click", () => {
+      const menu = document.getElementById("dock-popup-menu");
+      if (menu) menu.style.display = "none";
+    });
+
+    // Divider Resizing
+    const colDivider = document.getElementById("upload-col-divider");
+    let isDraggingDivider = false;
+
+    colDivider.addEventListener("mousedown", (e) => {
+      isDraggingDivider = true;
+      colDivider.classList.add("dragging");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDraggingDivider) return;
+      const containerRect = dockUploadContainer.getBoundingClientRect();
+      let newWidth;
+      if (currentDockPosition === "left") {
+        newWidth = e.clientX - containerRect.left;
+      } else {
+        newWidth = containerRect.right - e.clientX;
+      }
+      newWidth = Math.max(320, Math.min(newWidth, 750));
+      dockUploadContainer.style.setProperty("--edit-container-width", newWidth);
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDraggingDivider) {
+        isDraggingDivider = false;
+        colDivider.classList.remove("dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    });
+
+    // -------------------------------------------------------------
+    // Navigation Routing
+    // -------------------------------------------------------------
+    function navigateTo(target) {
+      [viewUploadPrompt, viewMultiGallery, viewTaggingDock, viewPosts, viewTags].forEach(el => {
+        if (el) el.style.display = "none";
+      });
+      document.querySelectorAll(".main-nav-link").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".subnav-link").forEach(el => el.classList.remove("active"));
+
+      if (target === "upload") {
+        document.getElementById("main-nav-upload")?.classList.add("active");
+        document.getElementById("subnav-upload")?.classList.add("active");
+        if (multiPages.length > 1 && viewMultiGallery.style.display === "block") {
+          viewMultiGallery.style.display = "block";
+        } else if (currentFile || dockSourceUrlInput.value.trim()) {
+          viewTaggingDock.style.display = "block";
+        } else if (multiPages.length > 1) {
+          viewMultiGallery.style.display = "block";
+        } else {
+          viewUploadPrompt.style.display = "block";
+        }
+      } else if (target === "posts" || target === "history") {
+        document.getElementById(target === "posts" ? "main-nav-posts" : "main-nav-history")?.classList.add("active");
+        document.getElementById(target === "posts" ? "subnav-posts" : "subnav-history")?.classList.add("active");
+        viewPosts.style.display = "block";
+        loadSessionPosts();
+      } else if (target === "tags") {
+        document.getElementById("main-nav-tags")?.classList.add("active");
+        viewTags.style.display = "block";
+        runTagSearch();
+      } else if (target === "help" || target === "wiki") {
+        navigateTo("upload");
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Settings Modal Handlers
+    // -------------------------------------------------------------
+    function openSettingsModal() {
+      modalSettings.style.display = "flex";
+      subnavConfigure.classList.add("active");
+      renderSettings();
+    }
+
+    function closeSettingsModal() {
+      modalSettings.style.display = "none";
+      subnavConfigure.classList.remove("active");
+    }
+
+    function toggleSettingsModal() {
+      if (modalSettings.style.display === "flex") closeSettingsModal();
+      else openSettingsModal();
+    }
+
+    function onModalBackdropClick(e) {
+      if (e.target === modalSettings) closeSettingsModal();
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (modalSettings.style.display === "flex") {
+          closeSettingsModal();
+        } else if (dockAutocompleteList.style.display === "block") {
+          closeAutocomplete();
+        } else if ((viewPosts && viewPosts.style.display === "block") || (viewTags && viewTags.style.display === "block")) {
+          navigateTo("upload");
+        }
+      }
+    });
+
+    // -------------------------------------------------------------
+    // Upload Prompt / Dropzone Handlers
+    // -------------------------------------------------------------
+    promptDropzone.addEventListener("click", () => promptFileInput.click());
+
+    promptDropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      promptDropzone.classList.add("dragover");
+    });
+    promptDropzone.addEventListener("dragleave", () => {
+      promptDropzone.classList.remove("dragover");
+    });
+    promptDropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      promptDropzone.classList.remove("dragover");
+
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processSelectedImage(e.dataTransfer.files[0]);
+        return;
+      }
+
+      const droppedText = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("text/uri-list");
+      if (droppedText && droppedText.startsWith("http")) {
+        promptUrlInput.value = droppedText.trim();
+        fetchUrlPrompt();
+      }
+    });
+
+    // Drag directly into Image Stage in View 2
+    const dockImageStage = document.getElementById("dock-image-stage");
+    dockImageStage.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dockImageStage.style.borderColor = "var(--link-color)";
+    });
+    dockImageStage.addEventListener("dragleave", () => {
+      dockImageStage.style.borderColor = "var(--default-border-color)";
+    });
+    dockImageStage.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dockImageStage.style.borderColor = "var(--default-border-color)";
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processSelectedImage(e.dataTransfer.files[0]);
+      }
+    });
+
+    promptFileInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        processSelectedImage(e.target.files[0]);
+      }
+      promptFileInput.value = "";
+    });
+
+    // Global Paste (Ctrl + V)
+    window.addEventListener("paste", (e) => {
+      const isInput = document.activeElement === tagsDockInput || document.activeElement === dockSourceUrlInput || document.activeElement === promptUrlInput;
+
+      const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items || [];
+      for (let item of items) {
+        if (item.type && item.type.indexOf("image") !== -1) {
+          const blob = item.getAsFile();
+          processSelectedImage(blob, "clipboard_image.png");
+          showToast("Pasted image from clipboard into RAM!");
+          return;
+        }
+      }
+
+      if (!isInput) {
+        const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+        if (text.trim().startsWith("http")) {
+          promptUrlInput.value = text.trim();
+          fetchUrlPrompt();
+        }
+      }
+    });
+
+    promptUrlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") fetchUrlPrompt();
+    });
+
+    promptUrlInput.addEventListener("paste", () => {
+      setTimeout(() => {
+        const val = promptUrlInput.value.trim();
+        if (val.startsWith("http://") || val.startsWith("https://")) {
+          fetchUrlPrompt();
+        }
+      }, 50);
+    });
+
+    // Process Selected Local Image
+    function processSelectedImage(file, customName = null) {
+      if (!file || !file.type || !file.type.startsWith("image/")) {
+        showToast("Please choose a valid image file (PNG, JPG, WEBP, GIF)!", true);
+        return;
+      }
+
+      currentFile = file;
+      multiPages = [];
+      document.getElementById("multi-page-pill").style.display = "none";
+
+      const fname = customName || file.name || "image.png";
+      const ext = fname.includes(".") ? "." + fname.split(".").pop().toLowerCase() : ".png";
+      const sizeStr = (file.size / 1024 > 1024)
+        ? (file.size / (1024 * 1024)).toFixed(1) + " MB"
+        : Math.round(file.size / 1024) + " KB";
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewImage(e.target.result, file.size, file.type, ext, sizeStr);
+        viewUploadPrompt.style.display = "none";
+        viewTaggingDock.style.display = "block";
+        updateDiscordPreview();
+        tagsDockInput.focus();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // -------------------------------------------------------------
+    // Image Zoom & Pan Controller (Max 1000%, Wheel Zoom, Drag to Move)
+    // -------------------------------------------------------------
+    const MIN_ZOOM = 0.5;   // 50%
+    const MAX_ZOOM = 10.0;  // 1000% max (10x)
+    let currentZoom = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let currentRotation = 0;
+    let isPanning = false;
+    let startPanX = 0;
+    let startPanY = 0;
+
+    function updateTransform(smooth = false) {
+      const wrapper = document.getElementById("dock-img-wrapper");
+      const badge = document.getElementById("zoom-level-badge");
+      if (!wrapper) return;
+      wrapper.style.transition = smooth ? "transform 0.12s ease-out" : "none";
+      wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom}) rotate(${currentRotation}deg)`;
+      if (badge) {
+        badge.textContent = Math.round(currentZoom * 100) + "%";
+      }
+    }
+
+    function zoomStep(delta) {
+      currentZoom = Math.min(Math.max(MIN_ZOOM, currentZoom + delta), MAX_ZOOM);
+      updateTransform(true);
+    }
+
+    function resetZoomToFit() {
+      currentZoom = 1.0;
+      panX = 0;
+      panY = 0;
+      currentRotation = 0;
+      const stage = document.getElementById("dock-image-stage");
+      if (stage) stage.style.cursor = "grab";
+      updateTransform(true);
+    }
+
+    function setZoom100() {
+      const img = document.getElementById("dock-img-preview");
+      const stage = document.getElementById("dock-image-stage");
+      if (img && img.naturalWidth && stage && stage.clientWidth > 0 && stage.clientHeight > 0) {
+        const stageW = stage.clientWidth;
+        const stageH = stage.clientHeight;
+        const aspectImg = img.naturalWidth / img.naturalHeight;
+        const aspectStage = stageW / stageH;
+        let displayedW;
+        if (aspectImg > aspectStage) {
+          displayedW = stageW;
+        } else {
+          displayedW = stageH * aspectImg;
+        }
+        const ratio = img.naturalWidth / displayedW;
+        currentZoom = Math.min(Math.max(MIN_ZOOM, ratio), MAX_ZOOM);
+      } else {
+        currentZoom = Math.min(2.0, MAX_ZOOM);
+      }
+      panX = 0;
+      panY = 0;
+      updateTransform(true);
+    }
+
+    function rotateImage() {
+      currentRotation = (currentRotation + 90) % 360;
+      updateTransform(true);
+    }
+
+    // Initialize Event Listeners for Wheel Zoom & Pan Drag
+    (function initZoomAndPan() {
+      const stage = document.getElementById("dock-image-stage");
+      if (!stage) return;
+
+      // 1. Zoom with Mouse Scroll Wheel (Scroll to zoom in / out)
+      stage.addEventListener("wheel", (e) => {
+        if (dockImgPreview.style.display === "none") return;
+        e.preventDefault();
+
+        // Scroll up (e.deltaY < 0): zoom in; Scroll down (e.deltaY > 0): zoom out
+        const factor = e.deltaY < 0 ? 1.15 : 0.87;
+        const newZoom = Math.min(Math.max(MIN_ZOOM, currentZoom * factor), MAX_ZOOM);
+
+        if (newZoom === currentZoom) return;
+
+        // Focal zoom towards mouse cursor position
+        const rect = stage.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+
+        panX -= (mouseX - panX) * (newZoom / currentZoom - 1);
+        panY -= (mouseY - panY) * (newZoom / currentZoom - 1);
+        currentZoom = newZoom;
+
+        updateTransform(false);
+      }, { passive: false });
+
+      // 2. Click & Drag to Move (Drag to pan image)
+      stage.addEventListener("mousedown", (e) => {
+        if (dockImgPreview.style.display === "none") return;
+        // Ignore if clicking tool buttons or pagination pill
+        if (e.target.closest("#stage-zoom-controls") || e.target.closest("#multi-page-pill") || e.target.tagName === "BUTTON") {
+          return;
+        }
+        if (e.button !== 0) return; // Left mouse button only
+
+        isPanning = true;
+        startPanX = e.clientX - panX;
+        startPanY = e.clientY - panY;
+        stage.style.cursor = "grabbing";
+        document.body.style.userSelect = "none";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isPanning) return;
+        panX = e.clientX - startPanX;
+        panY = e.clientY - startPanY;
+        updateTransform(false);
+      });
+
+      window.addEventListener("mouseup", () => {
+        if (isPanning) {
+          isPanning = false;
+          stage.style.cursor = "grab";
+          document.body.style.userSelect = "";
+        }
+      });
+
+      // 3. Double Click toggle between Fit and 200% / 400%
+      stage.addEventListener("dblclick", (e) => {
+        if (dockImgPreview.style.display === "none") return;
+        if (e.target.closest("#stage-zoom-controls") || e.target.closest("#multi-page-pill") || e.target.tagName === "BUTTON") return;
+        e.preventDefault();
+
+        if (Math.abs(currentZoom - 1.0) < 0.15 && Math.abs(panX) < 10 && Math.abs(panY) < 10) {
+          const rect = stage.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left - rect.width / 2;
+          const mouseY = e.clientY - rect.top - rect.height / 2;
+          currentZoom = Math.min(2.5, MAX_ZOOM);
+          panX = -mouseX * 1.5;
+          panY = -mouseY * 1.5;
+          updateTransform(true);
+        } else {
+          resetZoomToFit();
+        }
+      });
+    })();
+
+    // Set Image into Stage
+    function setPreviewImage(dataUri, size = 0, mime = "image/png", ext = ".png", sizeStr = "") {
+      dockImgPreview.src = dataUri;
+      dockImgPreview.style.display = "block";
+      dockStagePlaceholder.style.display = "none";
+      const zoomControls = document.getElementById("stage-zoom-controls");
+      if (zoomControls) zoomControls.style.display = "flex";
+      resetZoomToFit();
+
+      const displaySize = sizeStr || (size > 1024 * 1024 ? (size / (1024 * 1024)).toFixed(1) + " MB" : Math.round(size / 1024) + " KB");
+      dockFileSize.textContent = displaySize;
+      dockFileExt.textContent = ext || ".png";
+
+      const img = new Image();
+      img.onload = function() {
+        dockFileDims.textContent = `${this.naturalWidth}x${this.naturalHeight}`;
+      };
+      img.src = dataUri;
+    }
+
+    // Fetch URL from Prompt
+    async function fetchUrlPrompt(targetUrl = null) {
+      const url = (targetUrl || promptUrlInput.value).trim();
+      if (!url) {
+        showToast("Please enter a valid URL (Twitter, Pixiv...)!", true);
+        return;
+      }
+
+      dockSourceUrlInput.value = url;
+      dockTabSourceInput.value = url;
+
+      // Switch to Dock view immediately
+      viewUploadPrompt.style.display = "none";
+      viewTaggingDock.style.display = "block";
+      updateDiscordPreview();
+      tagsDockInput.focus();
+
+      let hostname = "";
+      try { hostname = new URL(url).hostname; } catch(e) {}
+      dockPlaceholderTitle.textContent = hostname ? `Source: ${hostname}` : "Artwork URL Ready";
+      dockPlaceholderDesc.textContent = url;
+      dockFileSize.textContent = hostname || "URL";
+      dockFileExt.textContent = ".link";
+      dockFileDims.textContent = "Fetching...";
+
+      showToast("Loading artwork from " + (hostname || "URL") + "...");
+      try {
+        const resp = await fetch("/api/fetch_image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+          if (data.is_multi && data.pages && data.pages.length > 1) {
+            multiPages = data.pages;
+            currentMultiIndex = 0;
+            renderMultiGallery(data);
+            viewUploadPrompt.style.display = "none";
+            viewTaggingDock.style.display = "none";
+            viewMultiGallery.style.display = "block";
+            showToast(`🎉 Loaded album with ${data.pages.length} images!`);
+            return;
+          } else {
+            multiPages = [];
+            document.getElementById("multi-page-pill").style.display = "none";
+            const btnBack = document.getElementById("btn-back-to-gallery");
+            if (btnBack) btnBack.style.display = "none";
+          }
+
+          if (data.data_uri) {
+            setPreviewImage(data.data_uri, data.size, data.content_type);
+          }
+
+          showToast("🎉 Artwork loaded successfully!");
+        } else {
+          showToast("Ready for tagging! (You can drag an image file in to preview)", false);
+        }
+      } catch (err) {
+        console.log("Fetch error:", err.message);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Multi-Image Gallery Handlers (Exact Danbooru match)
+    // -------------------------------------------------------------
+    function showMultiGallery() {
+      if (multiPages.length <= 1) return;
+      viewTaggingDock.style.display = "none";
+      viewUploadPrompt.style.display = "none";
+      viewMultiGallery.style.display = "block";
+      renderMultiGallery();
+    }
+
+    function renderMultiGallery(data = null) {
+      if (data) {
+        sourceMetadata = {
+          artist: data.artist || "",
+          tags: data.tags || [],
+          published: data.published || ""
+        };
+      }
+
+      // 1. Artist
+      const artistEl = document.getElementById("gallery-artist-name");
+      if (artistEl) {
+        artistEl.textContent = sourceMetadata.artist || "Unknown Artist";
+      }
+
+      // 2. Tags chips
+      const tagsContainer = document.getElementById("gallery-tags-list");
+      if (tagsContainer) {
+        tagsContainer.innerHTML = "";
+        if (sourceMetadata.tags && sourceMetadata.tags.length > 0) {
+          sourceMetadata.tags.forEach(t => {
+            const chip = document.createElement("span");
+            chip.className = "gallery-tag-chip";
+            chip.textContent = t;
+            chip.title = "Click to add this tag to input";
+            chip.onclick = () => addTagFromGallery(t);
+            tagsContainer.appendChild(chip);
+          });
+        } else {
+          tagsContainer.innerHTML = '<span style="color: var(--muted-text-color); font-size: 11px;">No tags found</span>';
+        }
+      }
+
+      // 3. Published date
+      const pubEl = document.getElementById("gallery-published-date");
+      if (pubEl) {
+        let dateDisplay = "—";
+        if (sourceMetadata.published) {
+          try {
+            const d = new Date(sourceMetadata.published);
+            dateDisplay = d.toISOString().replace("T", " ").substring(0, 16);
+          } catch(e) {
+            dateDisplay = sourceMetadata.published;
+          }
+        }
+        pubEl.textContent = dateDisplay;
+      }
+
+      // 4. Update counters & badges
+      const totalCount = multiPages.length;
+      const postedCount = multiPages.filter(p => p.posted).length;
+      const unpostedCount = totalCount - postedCount;
+
+      document.getElementById("count-all").textContent = totalCount;
+      document.getElementById("count-posted").textContent = postedCount;
+      document.getElementById("count-unposted").textContent = unpostedCount;
+      document.getElementById("gallery-total-badge").textContent = `${totalCount} images total`;
+
+      const backCountBadge = document.getElementById("back-gallery-count");
+      if (backCountBadge) backCountBadge.textContent = totalCount;
+      const btnBack = document.getElementById("btn-back-to-gallery");
+      if (btnBack) btnBack.style.display = totalCount > 1 ? "inline-block" : "none";
+
+      updateGalleryGrid();
+    }
+
+    function filterGallery(filterType) {
+      currentGalleryFilter = filterType;
+      document.querySelectorAll(".gallery-filter-tab").forEach(tab => {
+        tab.classList.toggle("active", tab.id === `filter-tab-${filterType}`);
+      });
+      updateGalleryGrid();
+    }
+
+    function updateGalleryGrid() {
+      const grid = document.getElementById("gallery-grid");
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      let items = multiPages;
+      if (currentGalleryFilter === "posted") {
+        items = multiPages.filter(p => p.posted);
+      } else if (currentGalleryFilter === "unposted") {
+        items = multiPages.filter(p => !p.posted);
+      }
+
+      if (items.length === 0) {
+        grid.innerHTML = '<div style="color: var(--muted-text-color); padding: 40px 20px; width: 100%; text-align: center;">No images found in this filter.</div>';
+        return;
+      }
+
+      items.forEach((page) => {
+        const originalIndex = multiPages.indexOf(page);
+        const card = document.createElement("div");
+        card.className = `gallery-card-item ${page.posted ? 'is-posted' : ''}`;
+
+        // Thumb container
+        const thumbBox = document.createElement("div");
+        thumbBox.className = "gallery-card-thumb";
+        thumbBox.title = `View and tag image #${page.page_num}`;
+        thumbBox.onclick = () => openPageInDock(originalIndex);
+
+        const img = document.createElement("img");
+        img.alt = `Page ${page.page_num}`;
+        img.loading = "lazy";
+        const thumbSrc = page.thumb_url || page.img_url;
+        img.src = `/api/proxy_image?url=${encodeURIComponent(thumbSrc)}`;
+        thumbBox.appendChild(img);
+
+        // Footer action
+        const footer = document.createElement("div");
+        footer.className = "gallery-card-footer";
+
+        if (page.posted) {
+          footer.innerHTML = `<span class="gallery-card-posted-badge">✓ Posted #${page.page_num}</span>`;
+        } else {
+          const postLink = document.createElement("a");
+          postLink.className = "gallery-card-post-link";
+          postLink.textContent = `Post #${page.page_num}`;
+          postLink.onclick = () => openPageInDock(originalIndex);
+          footer.appendChild(postLink);
+        }
+
+        card.appendChild(thumbBox);
+        card.appendChild(footer);
+        grid.appendChild(card);
+      });
+    }
+
+    function addTagFromGallery(tagText) {
+      const cleanTag = tagText.trim().toLowerCase().replace(/[\s\-\.]+/g, "_");
+      const cur = tagsDockInput.value.trim();
+      if (!cur.includes(cleanTag)) {
+        tagsDockInput.value = cur ? `${cur} ${cleanTag} ` : `${cleanTag} `;
+        updateDiscordPreview();
+        showToast(`Added tag: ${cleanTag}`);
+      }
+    }
+
+    function openPageInDock(idx) {
+      if (!multiPages || !multiPages[idx]) return;
+      currentMultiIndex = idx;
+      const page = multiPages[idx];
+
+      dockSourceUrlInput.value = page.source_url;
+      dockTabSourceInput.value = page.source_url;
+      updateDiscordPreview();
+
+      const proxyUrl = `/api/proxy_image?url=${encodeURIComponent(page.img_url)}`;
+      dockImgPreview.src = proxyUrl;
+      dockImgPreview.style.display = "block";
+      dockStagePlaceholder.style.display = "none";
+      const zoomControls = document.getElementById("stage-zoom-controls");
+      if (zoomControls) zoomControls.style.display = "flex";
+      resetZoomToFit();
+
+      dockFileDims.textContent = `${page.width}x${page.height}`;
+      dockFileSize.textContent = `Page ${page.page_num}`;
+      dockFileExt.textContent = ".jpg";
+
+      updateMultiPageIndicator();
+
+      viewMultiGallery.style.display = "none";
+      viewUploadPrompt.style.display = "none";
+      viewTaggingDock.style.display = "block";
+      tagsDockInput.focus();
+    }
+
+    function updateMultiPageIndicator() {
+      const pill = document.getElementById("multi-page-pill");
+      const btnBack = document.getElementById("btn-back-to-gallery");
+      const backCountBadge = document.getElementById("back-gallery-count");
+      if (multiPages.length > 1) {
+        pill.style.display = "block";
+        document.getElementById("multi-page-text").textContent = `${currentMultiIndex + 1} / ${multiPages.length}`;
+        if (btnBack) btnBack.style.display = "inline-block";
+        if (backCountBadge) backCountBadge.textContent = multiPages.length;
+      } else {
+        pill.style.display = "none";
+        if (btnBack) btnBack.style.display = "none";
+      }
+    }
+
+    async function changePixivPage(step) {
+      if (multiPages.length <= 1) return;
+      currentMultiIndex = (currentMultiIndex + step + multiPages.length) % multiPages.length;
+      updateMultiPageIndicator();
+
+      const page = multiPages[currentMultiIndex];
+      dockSourceUrlInput.value = page.source_url;
+      dockTabSourceInput.value = page.source_url;
+      updateDiscordPreview();
+
+      showToast(`Loading image ${currentMultiIndex + 1}/${multiPages.length}...`);
+      try {
+        const proxyUrl = `/api/proxy_image?url=${encodeURIComponent(page.img_url)}`;
+        dockImgPreview.src = proxyUrl;
+        dockImgPreview.style.display = "block";
+        dockStagePlaceholder.style.display = "none";
+        const zoomControls = document.getElementById("stage-zoom-controls");
+        if (zoomControls) zoomControls.style.display = "flex";
+        resetZoomToFit();
+        dockFileDims.textContent = `${page.width}x${page.height}`;
+        dockFileSize.textContent = `Page ${page.page_num}`;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function resetToUploadPrompt() {
+      currentFile = null;
+      multiPages = [];
+      document.getElementById("multi-page-pill").style.display = "none";
+      const btnBack = document.getElementById("btn-back-to-gallery");
+      if (btnBack) btnBack.style.display = "none";
+      const zoomControls = document.getElementById("stage-zoom-controls");
+      if (zoomControls) zoomControls.style.display = "none";
+      resetZoomToFit();
+      promptFileInput.value = "";
+      promptUrlInput.value = "";
+      dockImgPreview.src = "";
+      dockImgPreview.style.display = "none";
+      dockStagePlaceholder.style.display = "flex";
+      dockSourceUrlInput.value = "";
+      dockTabSourceInput.value = "";
+      viewMultiGallery.style.display = "none";
+      viewTaggingDock.style.display = "none";
+      viewUploadPrompt.style.display = "block";
+    }
+
+    // -------------------------------------------------------------
+    // Dock Tab & Rating Handlers
+    // -------------------------------------------------------------
+    function switchDockTab(tabName) {
+      document.querySelectorAll(".upload-edit-container .tab").forEach(t => {
+        t.classList.toggle("active-tab", t.getAttribute("data-docktab") === tabName);
+      });
+      document.querySelectorAll(".upload-edit-container .tab-panel").forEach(p => {
+        p.classList.toggle("active-tab", p.id === `docktab-${tabName}`);
+      });
+    }
+
+    // Rating Radio Change
+    document.querySelectorAll("input[name='post_rating']").forEach(radio => {
+      radio.addEventListener("change", (e) => {
+        selectedRating = e.target.value;
+        updateDiscordPreview();
+      });
+    });
+
+    // -------------------------------------------------------------
+    // Tagging, Autocomplete & Discord Formatting
+    // -------------------------------------------------------------
+    let autocompleteTimer = null;
+    tagsDockInput.addEventListener("input", () => {
+      // Check if user accidentally pasted URL into tags textarea
+      const val = tagsDockInput.value;
+      const urlMatch = val.match(/https?:\/\/[^\s]+/i);
+      if (urlMatch) {
+        const extractedUrl = urlMatch[0];
+        tagsDockInput.value = val.replace(extractedUrl, "").trim();
+        dockSourceUrlInput.value = extractedUrl;
+        dockTabSourceInput.value = extractedUrl;
+        showToast("Moved URL to Source URL field automatically!");
+        fetchUrlPrompt(extractedUrl);
+      }
+
+      clearTimeout(autocompleteTimer);
+      autocompleteTimer = setTimeout(() => {
+        handleDockAutocomplete();
+        updateDiscordPreview();
+      }, 70);
+    });
+
+    tagsDockInput.addEventListener("keydown", (e) => {
+      // Ctrl + Enter shortcut
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        submitPost();
+        return;
+      }
+
+      if (dockAutocompleteList.style.display === "block" && currentSuggestions.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeAutocompleteIndex = (activeAutocompleteIndex + 1) % currentSuggestions.length;
+          renderAutocompleteItems();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeAutocompleteIndex = (activeAutocompleteIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
+          renderAutocompleteItems();
+        } else if (e.key === "Enter" || e.key === "Tab") {
+          e.preventDefault();
+          if (activeAutocompleteIndex >= 0 && activeAutocompleteIndex < currentSuggestions.length) {
+            selectTag(currentSuggestions[activeAutocompleteIndex].name);
+          }
+        } else if (e.key === "Escape") {
+          closeAutocomplete();
+        }
+      }
+    });
+
+    function getCurrentToken() {
+      const pos = tagsDockInput.selectionStart;
+      const text = tagsDockInput.value.substring(0, pos);
+      const tokens = text.split(/\s+/);
+      const currentToken = tokens[tokens.length - 1];
+      return { token: currentToken, startPos: pos - currentToken.length, endPos: pos };
+    }
+
+    async function handleDockAutocomplete() {
+      const { token } = getCurrentToken();
+      if (!token || token.length < 1) {
+        closeAutocomplete();
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/api/tags/autocomplete?q=${encodeURIComponent(token)}&limit=10`);
+        if (!resp.ok) return;
+        const items = await resp.json();
+        if (items.length === 0) {
+          closeAutocomplete();
+          return;
+        }
+
+        currentSuggestions = items;
+        activeAutocompleteIndex = 0;
+        renderAutocompleteItems();
+        dockAutocompleteList.style.display = "block";
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderAutocompleteItems() {
+      dockAutocompleteList.innerHTML = "";
+      currentSuggestions.forEach((item, idx) => {
+        const li = document.createElement("li");
+        li.className = `ui-menu-item ${idx === activeAutocompleteIndex ? 'active' : ''}`;
+        li.innerHTML = `
+          <span class="tag-name-text cat-${item.category}">${escapeHtml(item.name)}</span>
+          <span class="tag-count-text">${item.count_formatted}</span>
+        `;
+        li.addEventListener("click", () => selectTag(item.name));
+        dockAutocompleteList.appendChild(li);
+      });
+    }
+
+    function selectTag(tagName) {
+      const { startPos, endPos } = getCurrentToken();
+      const text = tagsDockInput.value;
+      const before = text.substring(0, startPos);
+      const after = text.substring(endPos);
+
+      tagsDockInput.value = before + tagName.toLowerCase() + " " + after.replace(/^\s*/, "");
+      const newPos = startPos + tagName.length + 1;
+      tagsDockInput.selectionStart = newPos;
+      tagsDockInput.selectionEnd = newPos;
+      tagsDockInput.focus();
+
+      closeAutocomplete();
+      updateDiscordPreview();
+    }
+
+    function closeAutocomplete() {
+      dockAutocompleteList.style.display = "none";
+      currentSuggestions = [];
+      activeAutocompleteIndex = -1;
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#tags-dock-input") && !e.target.closest("#dock-autocomplete-list")) {
+        closeAutocomplete();
+      }
+    });
+
+    // Synchronize Source URL Inputs
+    dockSourceUrlInput.addEventListener("input", () => {
+      dockTabSourceInput.value = dockSourceUrlInput.value;
+      updateDiscordPreview();
+    });
+    dockTabSourceInput.addEventListener("input", () => {
+      dockSourceUrlInput.value = dockTabSourceInput.value;
+      updateDiscordPreview();
+    });
+
+    function getParsedTagsList() {
+      const raw = tagsDockInput.value.trim().toLowerCase();
+      const tokens = raw ? raw.split(/\s+/).filter(t => t.length > 0) : [];
+      const tags = tokens.filter(t => !t.startsWith("http://") && !t.startsWith("https://"));
+
+      const isRatingChecked = document.getElementById("switch-rating-tag").checked;
+      if (isRatingChecked && selectedRating) {
+        const rTag = `rating:${selectedRating}`;
+        if (!tags.includes(rTag)) tags.push(rTag);
+      }
+      return tags;
+    }
+
+    // Real-time Discord Preview Format:
+    // https://danbooru.donmai.us/uploads/new?url=[source_url]
+    // ` tag1 tag2 ... `
+    function updateDiscordPreview() {
+      const tags = getParsedTagsList();
+      dockTagsCount.textContent = `${tags.length} tags`;
+      tagCharLength.textContent = `${tagsDockInput.value.length} chars`;
+
+      let linkText = dockSourceUrlInput.value.trim();
+      if (!linkText) {
+        if (currentFile) linkText = currentFile.name || "uploaded_image.png";
+        else linkText = "link.com";
+      }
+
+      const danbooruUrl = `https://danbooru.donmai.us/uploads/new?url=${linkText}`;
+      const tagsText = tags.join(" ");
+      const tagsFormatted = `\` ${tagsText} \``;
+      const fullContent = `${danbooruUrl}\n${tagsFormatted}`;
+
+      dockDiscordPreview.textContent = fullContent;
+
+      const charLen = fullContent.length;
+      dockCharCount.textContent = `${charLen} / 2000 chars`;
+      dockCharCount.style.color = (charLen > 2000) ? "#ef4444" : ((charLen > 1800) ? "#f59e0b" : "var(--muted-text-color)");
+    }
+
+    // Populate Webhook Select
+    function populateWebhooks() {
+      dockWebhookSelect.innerHTML = "";
+      const webhooks = currentSettings.webhooks || [];
+      if (webhooks.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No webhooks configured in settings.json";
+        dockWebhookSelect.appendChild(opt);
+        return;
+      }
+
+      webhooks.forEach(wh => {
+        const opt = document.createElement("option");
+        opt.value = wh.name;
+        opt.textContent = `${wh.name} (${wh.url ? '✓ Has URL' : 'No URL'})`;
+        if (wh.name === currentSettings.active_webhook_name) opt.selected = true;
+        dockWebhookSelect.appendChild(opt);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Post Submission Action
+    // -------------------------------------------------------------
+    async function submitPost() {
+      const webhookName = dockWebhookSelect.value;
+      const sourceLink = dockSourceUrlInput.value.trim();
+
+      if (!sourceLink && !currentFile) {
+        showToast("Please enter a source URL or choose an image file!", true);
+        return;
+      }
+
+      const tags = getParsedTagsList();
+
+      btnDockPost.disabled = true;
+      btnDockPost.textContent = "Posting...";
+
+      const formData = new FormData();
+      formData.append("webhook_name", webhookName);
+      formData.append("source_link", sourceLink);
+      formData.append("tags", tags.join(" "));
+      if (currentFile) formData.append("file", currentFile);
+
+      try {
+        const resp = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+          showToast(data.error || "Error posting submission!", true);
+        } else {
+          showToast("🎉 Posted to Discord successfully!");
+          tagsDockInput.value = "";
+          dockSourceUrlInput.value = "";
+          resetToUploadPrompt();
+        }
+      } catch (err) {
+        showToast("Upload error: " + err.message, true);
+      } finally {
+        btnDockPost.disabled = false;
+        btnDockPost.textContent = "Post";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 3: Posts History Hub
+    // -------------------------------------------------------------
+    async function loadSessionPosts() {
+      try {
+        const resp = await fetch("/api/posts");
+        if (!resp.ok) return;
+        const posts = await resp.json();
+
+        const grid = document.getElementById("posts-history-grid");
+        const countDisplay = document.getElementById("posts-count-display");
+        const noText = document.getElementById("no-posts-text");
+
+        countDisplay.textContent = posts.length;
+
+        if (posts.length === 0) {
+          grid.innerHTML = "";
+          noText.style.display = "block";
+          return;
+        }
+
+        noText.style.display = "none";
+        grid.innerHTML = "";
+
+        posts.forEach(p => {
+          const card = document.createElement("div");
+          card.className = "post-preview-card";
+
+          const copyPayload = `${p.link}\n${p.tags}`;
+
+          card.innerHTML = `
+            <div class="post-preview-info">
+              <a href="${escapeHtml(p.source_link)}" target="_blank" class="truncate font-bold mb-1" style="font-size:12px; color:var(--link-color);">
+                ${escapeHtml(p.source_link || p.link)}
+              </a>
+              <div style="font-family:var(--monospace-font); font-size:11px; background:var(--body-background-color); border:1px solid var(--default-border-color); padding:6px; border-radius:4px; max-height:65px; overflow-y:auto; word-break:break-all; margin-bottom:8px;">
+                ${escapeHtml(p.tags)}
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto;" class="fineprint">
+                <span>${p.timestamp}</span>
+                <button type="button" class="button-outline-primary button-xs" onclick="copyText('${escapeHtml(copyPayload).replace(/'/g, "\\'")}')">📋 Copy</button>
+              </div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function filterPostsHistory() {
+      const q = document.getElementById("posts-search-query").value.trim().toLowerCase();
+      document.querySelectorAll(".post-preview-card").forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? "flex" : "none";
+      });
+    }
+
+    window.copyText = function(text) {
+      navigator.clipboard.writeText(text);
+      showToast("Copied message to clipboard!");
+    };
+
+    // -------------------------------------------------------------
+    // VIEW 4: Tags Database Browser
+    // -------------------------------------------------------------
+    async function runTagSearch() {
+      const q = document.getElementById("browser-q").value.trim();
+      const cat = document.getElementById("browser-cat").value;
+      const tbody = document.getElementById("tags-browser-tbody");
+
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted-text-color);">Searching...</td></tr>`;
+
+      try {
+        const resp = await fetch(`/api/tags/search?q=${encodeURIComponent(q)}&category=${cat}&limit=50`);
+        if (!resp.ok) return;
+        const items = await resp.json();
+
+        tbody.innerHTML = "";
+        if (items.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted-text-color);">No matching tags found</td></tr>`;
+          return;
+        }
+
+        items.forEach(it => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><strong class="cat-${it.category}" style="font-family:var(--monospace-font);">${escapeHtml(it.name)}</strong></td>
+            <td><span style="font-size:11px; text-transform:uppercase; color:var(--muted-text-color);">${it.category}</span></td>
+            <td><span style="font-family:var(--monospace-font);">${it.count_formatted}</span></td>
+            <td>
+              <button type="button" class="button-outline-primary button-xs" onclick="addTagFromBrowser('${escapeHtml(it.name)}')">+ Add</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    document.getElementById("browser-q").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runTagSearch();
+    });
+
+    window.addTagFromBrowser = function(tag) {
+      const cur = tagsDockInput.value.trim();
+      tagsDockInput.value = cur ? `${cur} ${tag} ` : `${tag} `;
+      navigateTo("upload");
+      updateDiscordPreview();
+      showToast(`Added tag "${tag}"!`);
+    };
+
+    // -------------------------------------------------------------
+    // External Tools (SauceNAO, Ascii2D, Google Lens)
+    // -------------------------------------------------------------
+    function openSauceNAO() {
+      const url = dockSourceUrlInput.value.trim();
+      if (url) window.open(`https://saucenao.com/search.php?url=${encodeURIComponent(url)}`, "_blank");
+      else window.open("https://saucenao.com/", "_blank");
+    }
+
+    function openAscii2D() {
+      const url = dockSourceUrlInput.value.trim();
+      if (url) window.open(`https://ascii2d.net/search/url/${encodeURIComponent(url)}`, "_blank");
+      else window.open("https://ascii2d.net/", "_blank");
+    }
+
+    function openGoogleLens() {
+      const url = dockSourceUrlInput.value.trim();
+      if (url) window.open(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}`, "_blank");
+      else window.open("https://images.google.com/", "_blank");
+    }
+
+    function showSupportedSites() {
+      showToast("Supported: Twitter/X (multi-photo), Pixiv (album), Danbooru, Gelbooru, direct image files.");
+    }
+
+    // -------------------------------------------------------------
+    // Settings Management (settings.json & Excel/CSV)
+    // -------------------------------------------------------------
+    async function renderSettings() {
+      try {
+        const resp = await fetch("/api/tags/status");
+        if (resp.ok) {
+          const st = await resp.json();
+          document.getElementById("settings-tag-status").textContent = `${st.tag_count_formatted} tags in RAM`;
+          document.getElementById("current-file-label").textContent = st.current_filename || "None";
+          document.getElementById("current-source-label").textContent = `Source: ${st.current_source || 'N/A'}`;
+          document.getElementById("header-tag-file").textContent = st.current_filename || "None";
+          document.getElementById("header-tag-count").textContent = st.tag_count_formatted;
+
+          const filesTbody = document.getElementById("data-files-tbody");
+          filesTbody.innerHTML = "";
+          if (!st.available_files || st.available_files.length === 0) {
+            filesTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted-text-color);">No tag files found in ./data/</td></tr>`;
+          } else {
+            st.available_files.forEach(f => {
+              const isCur = (f.name === st.current_filename);
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>
+                  <strong>${escapeHtml(f.name)}</strong>
+                  ${isCur ? '<span style="color:var(--green-4); font-size:10px; margin-left:6px;">(Active)</span>' : ''}
+                </td>
+                <td><span style="font-family:var(--monospace-font);">${f.size}</span></td>
+                <td><span style="color:var(--muted-text-color);">${f.modified}</span></td>
+                <td>
+                  ${isCur 
+                    ? '<button type="button" class="button-outline-primary button-xs" onclick="switchTagFile(\'' + escapeHtml(f.path) + '\')">🔄 Reload</button>' 
+                    : '<button type="button" class="button-primary button-xs" onclick="switchTagFile(\'' + escapeHtml(f.path) + '\')">Use this file</button>'}
+                </td>
+              `;
+              filesTbody.appendChild(tr);
+            });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      // Webhooks list
+      const wbTbody = document.getElementById("webhooks-tbody");
+      wbTbody.innerHTML = "";
+      const webhooks = currentSettings.webhooks || [];
+      if (webhooks.length === 0) {
+        wbTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--muted-text-color);">No webhooks configured yet.</td></tr>`;
+      } else {
+        webhooks.forEach((wh, idx) => {
+          const isDef = (wh.name === currentSettings.active_webhook_name);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>
+              <input type="text" value="${escapeHtml(wh.name)}" class="form-input wh-name" style="width:100%; font-size:12px;">
+              ${isDef ? '<div style="color:var(--green-4); font-size:10px; font-weight:bold; margin-top:2px;">✓ Default</div>' : ''}
+            </td>
+            <td>
+              <input type="password" value="${escapeHtml(wh.url || '')}" class="form-input wh-url" placeholder="https://discord.com/api/webhooks/..." style="width:100%; font-size:12px;">
+            </td>
+            <td>
+              <div style="display:flex; gap:4px;">
+                <button type="button" class="button-outline-primary button-xs" onclick="testWh(${idx})">Test</button>
+                ${!isDef ? `<button type="button" class="button-outline-primary button-xs" onclick="setDefWh(${idx})">Set default</button>` : ''}
+                <button type="button" class="button-outline-danger button-xs" onclick="delWh(${idx})">Delete</button>
+              </div>
+            </td>
+          `;
+          wbTbody.appendChild(tr);
+        });
+      }
+    }
+
+    // Load new tag file
+    document.getElementById("settings-tag-uploader").addEventListener("change", async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      showToast(`Loading "${file.name}" into RAM...`);
+      try {
+        const resp = await fetch("/api/tags/reload", { method: "POST", body: formData });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          showToast(`🎉 Loaded ${data.tag_count_formatted} tags successfully!`);
+          renderSettings();
+        } else {
+          showToast(data.error || "Failed to load tag file!", true);
+        }
+      } catch (err) {
+        showToast("Error: " + err.message, true);
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    window.switchTagFile = async function(filePath) {
+      showToast(`Switching to tag file ${filePath}...`);
+      try {
+        const resp = await fetch("/api/tags/reload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: filePath })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          showToast(`🎉 Successfully loaded ${data.tag_count_formatted} tags!`);
+          renderSettings();
+        } else {
+          showToast(data.error || "Error switching tag file!", true);
+        }
+      } catch (err) {
+        showToast("Error: " + err.message, true);
+      }
+    };
+
+    function addNewWebhook() {
+      if (!currentSettings.webhooks) currentSettings.webhooks = [];
+      currentSettings.webhooks.push({ name: `Webhook ${currentSettings.webhooks.length + 1}`, url: "" });
+      renderSettings();
+    }
+
+    window.delWh = function(idx) {
+      if (confirm("Are you sure you want to delete this Webhook?")) {
+        currentSettings.webhooks.splice(idx, 1);
+        renderSettings();
+      }
+    };
+
+    window.setDefWh = function(idx) {
+      const wh = currentSettings.webhooks[idx];
+      if (wh) {
+        currentSettings.active_webhook_name = wh.name;
+        renderSettings();
+        populateWebhooks();
+        showToast(`Set "${wh.name}" as default webhook!`);
+      }
+    };
+
+    window.testWh = async function(idx) {
+      const urlInput = document.querySelectorAll(".wh-url")[idx];
+      const url = urlInput ? urlInput.value.trim() : "";
+      if (!url) {
+        showToast("Please enter a Webhook URL!", true);
+        return;
+      }
+
+      try {
+        const resp = await fetch("/api/test_webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ webhook_url: url })
+        });
+        const data = await resp.json();
+        if (data.success) showToast(`Webhook connection successful: "${data.name}"!`);
+        else showToast(`Webhook error: ${data.error}`, true);
+      } catch (err) {
+        showToast("Connection error: " + err.message, true);
+      }
+    };
+
+    async function saveSettings() {
+      const names = document.querySelectorAll(".wh-name");
+      const urls = document.querySelectorAll(".wh-url");
+      const whs = [];
+      names.forEach((n, i) => {
+        whs.push({ name: n.value.trim() || `Webhook ${i+1}`, url: urls[i].value.trim() });
+      });
+
+      currentSettings.webhooks = whs;
+
+      try {
+        const resp = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(currentSettings)
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          showToast("Saved settings.json successfully!");
+          populateWebhooks();
+          renderSettings();
+        } else {
+          showToast("Error: " + data.error, true);
+        }
+      } catch (err) {
+        showToast("Error: " + err.message, true);
+      }
+    }
+
+    async function loadSettings() {
+      try {
+        const resp = await fetch("/api/settings");
+        if (resp.ok) {
+          currentSettings = await resp.json();
+          renderSettings();
+          populateWebhooks();
+          showToast("Reloaded settings.json!");
+        }
+      } catch (err) {
+        showToast("Error: " + err.message, true);
+      }
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Initial Setup
+    populateWebhooks();
+    updateDiscordPreview();
+  </script>
+</body>
+</html>

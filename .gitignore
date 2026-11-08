@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Local User Settings (Contains sensitive Discord Webhook URLs)
+settings.json
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor & IDE configs
+.vscode/
+.idea/
+*.swp

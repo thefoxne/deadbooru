@@ -1,0 +1,14 @@
+{
+  "active_webhook_name": "Default Discord Channel",
+  "auto_rating_tag": true,
+  "default_rating": "general",
+  "port": 5000,
+  "tags_file_path": "./data/tags.csv",
+  "upload_mode": "text_only",
+  "webhooks": [
+    {
+      "name": "Default Discord Channel",
+      "url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+    }
+  ]
+}
