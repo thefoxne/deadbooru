@@ -351,7 +351,7 @@ class TagDatabase:
         self.current_filename = os.path.basename(source_name)
 
     def search(self, query: str, limit: int = 15, category: Optional[str] = None) -> List[Dict]:
-        """Danbooru-standard tag search with category prefixes, word boundaries, and typo correction."""
+        """Danbooru-standard tag search with post count priority, word boundaries, and typo correction."""
         raw_query = query.strip()
         if not raw_query:
             return []
@@ -394,62 +394,92 @@ class TagDatabase:
             if len(parts) >= 2:
                 pattern_re = re.compile("^" + "[^_]*_".join(parts))
 
+        esc_core = re.escape(core_q)
+        # Word boundary: tag start, digits, underscore, hyphen, or parenthesis
+        word_start_re = re.compile(r'(?:^|[\d_\-\(\)])' + esc_core)
+
         candidates = self.tags
         if category_filter:
             candidates = [t for t in candidates if t[1] == category_filter]
 
-        scored = []
+        exact_match = None
+        primary_tags = []
+        secondary_tags = []
         seen = set()
 
         for item in candidates:
             name, cat, cnt = item
             nl = name.lower()
 
-            tier = None
             if nl == clean_q or (core_q and nl == core_q):
-                tier = 0  # Exact match (e.g. breasts == breasts)
-            elif has_leading_underscore:
+                if not exact_match or cnt > exact_match[2]:
+                    exact_match = item
+                continue
+
+            if has_leading_underscore:
                 if clean_q in nl:
-                    if nl.endswith(clean_q):
-                        tier = 1  # Suffix match (e.g. _fubuki in shirakami_fubuki)
-                    elif f"{clean_q}_" in nl:
-                        tier = 2  # Word match inside tag
-                    else:
-                        tier = 3  # Substring match
-            elif not is_wildcard and nl.startswith(clean_q + "_"):
-                tier = 1  # Tag starts with query + _ (e.g. breasts_out, blue_eyes)
-            elif not is_wildcard and nl.startswith(clean_q):
-                tier = 2  # Tag starts with query (e.g. breasts...)
-            elif f"_{clean_q}" in nl:
-                if nl.endswith(f"_{clean_q}"):
-                    tier = 1  # Word exact match at end of tag (e.g. large_breasts, shirakami_fubuki)
-                elif f"_{clean_q}_" in nl:
-                    tier = 2  # Word exact match inside tag (e.g. between_breasts)
-                else:
-                    tier = 3  # Word prefix match inside tag
-            elif pattern_re and pattern_re.search(nl):
-                tier = 3  # Abbreviation pattern match (e.g. bl_ey -> blue_eyes)
-            elif clean_q in nl:
-                tier = 4  # Generic substring
+                    primary_tags.append((cnt, item))
+                elif core_q in nl:
+                    secondary_tags.append((cnt, item))
+            else:
+                if pattern_re and pattern_re.search(nl):
+                    primary_tags.append((cnt, item))
+                elif nl.startswith(clean_q):
+                    # Tag starts with query (e.g. ye -> yellow_eyes, breasts -> breasts_out)
+                    primary_tags.append((cnt, item))
+                elif word_start_re.search(nl):
+                    # Query starts a word inside tag (e.g. breasts -> large_breasts, girl -> 1girl, fubuki -> shirakami_fubuki)
+                    primary_tags.append((cnt, item))
+                elif clean_q in nl:
+                    secondary_tags.append((cnt, item))
 
-            if tier is not None:
-                scored.append((tier, -cnt, item))
-                seen.add(name)
-
-        scored.sort(key=lambda x: (x[0], x[1]))
+        # Prioritize tags with higher post count!
+        primary_tags.sort(key=lambda x: -x[0])
+        secondary_tags.sort(key=lambda x: -x[0])
 
         results = []
-        for tier, neg_cnt, item in scored[:limit]:
-            name, cat, cnt = item
-            display_name = (prefix_token + name) if prefix_token else name
+        if exact_match:
+            display_name = (prefix_token + exact_match[0]) if prefix_token else exact_match[0]
             results.append({
                 "name": display_name,
-                "raw_name": name,
-                "category": cat,
-                "count": cnt,
-                "count_formatted": self.format_count(cnt),
+                "raw_name": exact_match[0],
+                "category": exact_match[1],
+                "count": exact_match[2],
+                "count_formatted": self.format_count(exact_match[2]),
                 "is_typo": False
             })
+            seen.add(exact_match[0])
+
+        for cnt, item in primary_tags:
+            if item[0] not in seen:
+                seen.add(item[0])
+                display_name = (prefix_token + item[0]) if prefix_token else item[0]
+                results.append({
+                    "name": display_name,
+                    "raw_name": item[0],
+                    "category": item[1],
+                    "count": item[2],
+                    "count_formatted": self.format_count(item[2]),
+                    "is_typo": False
+                })
+                if len(results) >= limit:
+                    break
+
+        if len(results) < limit:
+            for cnt, item in secondary_tags:
+                if item[0] not in seen:
+                    seen.add(item[0])
+                    display_name = (prefix_token + item[0]) if prefix_token else item[0]
+                    results.append({
+                        "name": display_name,
+                        "raw_name": item[0],
+                        "category": item[1],
+                        "count": item[2],
+                        "count_formatted": self.format_count(item[2]),
+                        "is_typo": False
+                    })
+                    if len(results) >= limit:
+                        break
 
         # Fuzzy / Typo matching if fewer results than limit and clean_q >= 3 chars
         if len(results) < limit and len(clean_q) >= 3 and not is_wildcard and not is_pattern and not has_leading_underscore:
