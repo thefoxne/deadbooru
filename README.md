@@ -52,5 +52,5 @@ Settings are saved to `settings.json`. An example configuration is provided in `
 ```
 
 ---
-
+ai slop super fakebooru
 
